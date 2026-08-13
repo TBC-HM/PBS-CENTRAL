@@ -39,6 +39,17 @@ test("main workspace visibly links to deployed operational surfaces", async () =
   assert.match(shell, /Open automation control room/);
 });
 
+test("Work exposes one governed tile per app and Organization exposes company-linked accounts", async()=>{
+ const projects=await readFile(new URL("../../app/workspace/projects/page.tsx",import.meta.url),"utf8");
+ const integrations=await readFile(new URL("../../app/workspace/integrations/page.tsx",import.meta.url),"utf8");
+ const google=await readFile(new URL("../../app/api/integrations/google/start/route.ts",import.meta.url),"utf8");
+ const migration=await readFile(new URL("../../supabase/migrations/20260813210319_project_and_integration_registry.sql",import.meta.url),"utf8");
+ assert.match(shell,/Open app-development projects/);assert.match(shell,/Accounts & apps/);
+ assert.match(projects,/kos_projects/);assert.match(projects,/project-tile/);assert.match(integrations,/kos_integrations/);
+ assert.match(google,/GOOGLE_OAUTH_CLIENT_ID/);assert.match(google,/drive\.readonly/);assert.match(google,/httpOnly:true/);
+ assert.match(migration,/kos_projects enable row level security/);assert.match(migration,/kos_integrations enable row level security/);assert.match(migration,/credential_reference/);
+});
+
 test("organization is a company tile portfolio that opens permanent dossiers", async () => {
   const shell = await readFile(new URL("../../components/workspace-shell.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../../app/workspace/page.tsx", import.meta.url), "utf8");
