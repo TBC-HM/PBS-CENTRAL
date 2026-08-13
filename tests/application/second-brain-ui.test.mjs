@@ -38,6 +38,15 @@ test("companies and contacts have permanent governed routes", async () => {
   assert.match(companyPage + contactPage, /getClaims/);
 });
 
+test("company dossier exposes legal, people, relationship, banking and obligation sections", async () => {
+  const page = await readFile(new URL("../../app/workspace/companies/[id]/page.tsx", import.meta.url), "utf8");
+  for (const source of ["kos_document_links", "kos_company_relationships", "kos_bank_accounts", "kos_contacts"])
+    assert.match(page, new RegExp(source));
+  for (const section of ["Legal identity", "Legal documents", "Main contacts", "Ownership & advisers", "Banking", "Pending obligations"])
+    assert.match(page, new RegExp(section));
+  assert.match(page, /legacy task table is intentionally excluded/i);
+});
+
 test("document upload uses private tenant-scoped storage and atomic registry RPC", async () => {
   const upload = await readFile(new URL("../../components/document-upload.tsx", import.meta.url), "utf8");
   const migration = await readFile(new URL("../../supabase/migrations/20260813152000_document_upload_registration.sql", import.meta.url), "utf8");
