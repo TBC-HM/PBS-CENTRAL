@@ -62,8 +62,6 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .quiet-action:disabled { cursor: not-allowed; opacity: .5; }
 
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 238px minmax(0, 1fr); background: #f5f3ed; }
-.workspace-shortcuts { position: fixed; z-index: 20; right: 1.25rem; bottom: 1.25rem; display: flex; gap: .35rem; flex-wrap: wrap; justify-content: end; }
-.workspace-shortcuts a { padding: .8rem 1rem; border: 1px solid var(--signal-dark); background: var(--signal-dark); color: white; text-decoration: none; box-shadow: 0 8px 24px rgba(16,36,46,.18); }
 .app-sidebar { position: sticky; top: 0; height: 100vh; padding: 1.5rem 1rem; border-right: 1px solid #d8d4ca; display: flex; flex-direction: column; background: #ebe8df; }
 .app-brand { position: static; margin: .4rem .65rem 2.5rem; }
 .app-sidebar nav { display: grid; gap: .2rem; }
@@ -174,6 +172,17 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .entity-section > div strong { font: 400 1.8rem/1 var(--font-display); }
 .contact-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.2rem 0; }
 .directory-note { margin-top: 1rem; padding: .75rem; background: #f2efe7; color: var(--muted); }
+.company-tile-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; margin-top: 1rem; }
+.company-tile { min-height: 310px; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; border: 1px solid #d8d4ca; background: rgba(255,255,255,.72); color: var(--ink); text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease; }
+.company-tile:hover, .company-tile:focus-visible { border-color: var(--signal); background: white; transform: translateY(-2px); outline: none; }
+.company-tile h2 { margin: 0; font: 400 clamp(1.8rem,3vw,3rem)/.95 var(--font-display); letter-spacing: -.03em; }
+.company-tile p:not(.eyebrow) { color: var(--muted); line-height: 1.45; }
+.company-tile dl { margin: 1.5rem 0; }
+.company-tile dl div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ddd8cc; }
+.company-tile dt { color: var(--muted); }
+.company-tile dd { margin: 0; text-align: right; }
+.company-tile > span { color: var(--signal-dark); font: .68rem/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .06em; }
+.secondary-link { background: transparent !important; color: var(--ink) !important; }
 .entity-page { min-height: 100vh; padding: clamp(1.25rem,5vw,5rem); background: #f5f3ed; }
 .entity-page nav { display: flex; gap: 1.2rem; margin-bottom: 4rem; }
 .entity-page a { color: var(--signal-dark); }
@@ -257,10 +266,11 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
   .dossier-layout, .dossier-sections { grid-template-columns: 1fr; }
   .obligations-rail { position: static; }
   .dossier-summary { grid-template-columns: repeat(2,1fr); }
+  .company-tile-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .session-stream article { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 520px) { .memory-grid, .category-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .memory-grid, .category-grid, .company-tile-grid { grid-template-columns: 1fr; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }

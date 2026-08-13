@@ -31,6 +31,16 @@ test("main workspace visibly links to deployed operational surfaces", async () =
   assert.match(shell, /Open automation control room/);
 });
 
+test("organization is a company tile portfolio that opens permanent dossiers", async () => {
+  const shell = await readFile(new URL("../../components/workspace-shell.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../../app/workspace/page.tsx", import.meta.url), "utf8");
+  assert.match(shell, /CompanyTileDirectory/);
+  assert.match(shell, /company-tile-grid/);
+  assert.match(shell, /Open company overview/);
+  assert.match(shell, /workspace\/companies\/\$\{item\.id\}/);
+  assert.doesNotMatch(page, /workspace-shortcuts|upload-shortcut/);
+});
+
 test("empty workflow states route users to a recovery action", () => {
   for (const label of ["Open Knowledge", "Review Inbox", "Open Work"])
     assert.match(shell, new RegExp(label));
