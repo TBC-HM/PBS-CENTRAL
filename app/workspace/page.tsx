@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
@@ -25,5 +26,5 @@ export default async function WorkspacePage() {
     supabase.from("kos_company_relationships").select("id,source_company_id,target_company_id,relationship_type,external_party,ownership_percent,valid_from,valid_to").eq("workspace_id", workspace.id).limit(200)
   ]);
 
-  return <WorkspaceShell workspace={workspace} role={String(membership.data?.role ?? "viewer")} evidence={evidence.data ?? []} approvals={approvals.data ?? []} jobs={jobs.data ?? []} documents={documents.data ?? []} sessions={sessions.data ?? []} handovers={handovers.data ?? []} sources={sources.data ?? []} companies={companies.data ?? []} contacts={contacts.data ?? []} aliases={aliases.data ?? []} companyRelationships={companyRelationships.data ?? []} />;
+  return <><Link className="upload-shortcut" href="/workspace/upload">＋ Upload files</Link><WorkspaceShell workspace={workspace} role={String(membership.data?.role ?? "viewer")} evidence={evidence.data ?? []} approvals={approvals.data ?? []} jobs={jobs.data ?? []} documents={documents.data ?? []} sessions={sessions.data ?? []} handovers={handovers.data ?? []} sources={sources.data ?? []} companies={companies.data ?? []} contacts={contacts.data ?? []} aliases={aliases.data ?? []} companyRelationships={companyRelationships.data ?? []} /></>;
 }

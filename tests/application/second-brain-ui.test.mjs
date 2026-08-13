@@ -37,3 +37,15 @@ test("companies and contacts have permanent governed routes", async () => {
   assert.match(contactPage, /workspace\/companies/);
   assert.match(companyPage + contactPage, /getClaims/);
 });
+
+test("document upload uses private tenant-scoped storage and atomic registry RPC", async () => {
+  const upload = await readFile(new URL("../../components/document-upload.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../supabase/migrations/20260813152000_document_upload_registration.sql", import.meta.url), "utf8");
+  assert.match(upload, /knowledge-originals/);
+  assert.match(upload, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(upload, /kos_register_uploaded_document/);
+  assert.match(upload, /remove\(\[objectPath\]\)/);
+  assert.match(migration, /kos_has_role/);
+  assert.match(migration, /target_workspace::text \|\| '\/%'/);
+  assert.match(migration, /storage\.objects/);
+});
