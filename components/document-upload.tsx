@@ -24,7 +24,7 @@ async function filesFromEntry(entry: FileEntry | DirectoryEntry, parent = ""): P
   return (await Promise.all(children.map((child) => filesFromEntry(child, path)))).flat();
 }
 
-export function DocumentUpload({ workspaceId }: { workspaceId: string }) {
+export function DocumentUpload({ workspaceId, companyId }: { workspaceId: string; companyId?: string }) {
   const router = useRouter();
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [category, setCategory] = useState("General");
@@ -58,6 +58,7 @@ export function DocumentUpload({ workspaceId }: { workspaceId: string }) {
     if (uploadError) throw uploadError;
     const { error: registerError } = await (supabase as any).rpc("kos_register_uploaded_document", { target_workspace: workspaceId, document_id_value: documentId, version_id_value: versionId, title_value: titleFromPath(item.relativePath), document_type_value: category.trim(), object_path_value: objectPath, original_filename_value: item.relativePath, media_type_value: item.file.type || "application/octet-stream", byte_size_value: item.file.size, sha256_value: checksum });
     if (registerError) { await supabase.storage.from("knowledge-originals").remove([objectPath]); throw registerError; }
+    if (companyId) { const { error: linkError } = await (supabase as any).rpc("kos_assign_document_company", { target_workspace: workspaceId, target_document: documentId, target_company: companyId }); if (linkError) throw linkError; }
   }
 
   async function submit(event: FormEvent) {
@@ -76,7 +77,7 @@ export function DocumentUpload({ workspaceId }: { workspaceId: string }) {
   }
 
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
-  return <form className="upload-panel upload-container" onSubmit={submit}><p className="eyebrow">Private document intake</p><h2>Drop files or entire folders.</h2><p>All file types are accepted. Folder structure is preserved in the registry; every original remains private, tenant-scoped and SHA-256 checksummed.</p>
+  return <form className="upload-panel upload-container" onSubmit={submit}><p className="eyebrow">Private document intake{companyId ? " · Company file" : ""}</p><h2>Drop files or entire folders.</h2><p>All file types are accepted. Folder structure is preserved in the registry; every original remains private, tenant-scoped and SHA-256 checksummed.{companyId ? " This batch will be filed directly under the selected company." : ""}</p>
     <div className={`folder-dropzone ${dragging ? "dragging" : ""}`} onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }} onDrop={drop}>
       <strong>Pull a folder or any files here</strong><span>Documents, spreadsheets, photos, audio, video, archives and unknown formats</span><div className="button-row"><label className="file-picker"><input type="file" multiple onChange={(event) => addFiles(Array.from(event.target.files ?? []))} />Choose files</label><label className="file-picker"><input ref={(node) => node?.setAttribute("webkitdirectory", "")} type="file" multiple onChange={(event) => addFiles(Array.from(event.target.files ?? []))} />Choose folder</label></div>
     </div>

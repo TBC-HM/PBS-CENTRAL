@@ -88,6 +88,20 @@ test("document intake accepts multi-file and full-folder batches", async () => {
   assert.doesNotMatch(upload, /accept=/);
 });
 
+test("documents have a company tree and governed company assignment", async () => {
+  const library = await readFile(new URL("../../components/document-library.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../../app/workspace/documents/page.tsx", import.meta.url), "utf8");
+  const company = await readFile(new URL("../../app/workspace/companies/[id]/page.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../supabase/migrations/20260813203251_company_document_library.sql", import.meta.url), "utf8");
+  assert.match(library, /Unassigned uploads/);
+  assert.match(library, /Assign to company/);
+  assert.match(library, /kos_assign_document_company/);
+  assert.match(page, /kos_document_versions/);
+  assert.match(company, /upload\?company=/);
+  assert.match(migration, /document not found in workspace/);
+  assert.match(migration, /company not found in workspace/);
+});
+
 test("automation control uses tenant-checked idempotent workflow RPCs", async () => {
   const control = await readFile(new URL("../../components/automation-control.tsx", import.meta.url), "utf8");
   const migration = await readFile(new URL("../../supabase/migrations/20260813161000_governed_workflow_control.sql", import.meta.url), "utf8");
