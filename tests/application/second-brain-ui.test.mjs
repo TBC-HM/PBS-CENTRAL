@@ -64,6 +64,19 @@ test("companies and contacts have permanent governed routes", async () => {
   assert.match(companyPage + contactPage, /getClaims/);
 });
 
+test("contact profiles support tenant-safe editing, notes and follow-ups", async () => {
+  const operations = await readFile(new URL("../../components/contact-operations.tsx", import.meta.url), "utf8");
+  const contactPage = await readFile(new URL("../../app/workspace/contacts/[id]/page.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../supabase/migrations/20260813204528_contact_operations.sql", import.meta.url), "utf8");
+  const hardening = await readFile(new URL("../../supabase/migrations/20260813204855_contact_operations_security_invoker.sql", import.meta.url), "utf8");
+  for (const rpc of ["kos_update_contact", "kos_add_contact_note", "kos_create_follow_up"]) assert.match(operations + migration, new RegExp(rpc));
+  for (const label of ["Save audited changes", "Add governed note", "Create audited follow-up"]) assert.match(operations, new RegExp(label));
+  assert.match(contactPage, /kos_contact_notes/); assert.match(contactPage, /kos_follow_ups/);
+  assert.match(migration, /enable row level security/g); assert.match(migration, /kos_has_role/); assert.match(migration, /kos_audit_events/);
+  assert.match(migration, /contact not found in workspace/); assert.match(migration, /company not found in workspace/);
+  assert.equal((hardening.match(/security invoker/g) ?? []).length, 3);
+});
+
 test("company dossier exposes legal, people, relationship, banking and obligation sections", async () => {
   const page = await readFile(new URL("../../app/workspace/companies/[id]/page.tsx", import.meta.url), "utf8");
   for (const source of ["kos_document_links", "kos_company_relationships", "kos_bank_accounts", "kos_contacts"])
