@@ -27,3 +27,13 @@ test("empty workflow states route users to a recovery action", () => {
   for (const label of ["Open Knowledge", "Review Inbox", "Open Work"])
     assert.match(shell, new RegExp(label));
 });
+
+test("companies and contacts have permanent governed routes", async () => {
+  const companyPage = await readFile(new URL("../../app/workspace/companies/[id]/page.tsx", import.meta.url), "utf8");
+  const contactPage = await readFile(new URL("../../app/workspace/contacts/[id]/page.tsx", import.meta.url), "utf8");
+  assert.match(companyPage, /kos_companies/);
+  assert.match(companyPage, /workspace\/contacts/);
+  assert.match(contactPage, /kos_contacts/);
+  assert.match(contactPage, /workspace\/companies/);
+  assert.match(companyPage + contactPage, /getClaims/);
+});
