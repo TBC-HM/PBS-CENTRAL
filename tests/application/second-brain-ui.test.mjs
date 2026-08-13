@@ -12,12 +12,20 @@ test("Second Brain UI is wired to existing workspace-scoped PBS CENTRAL data", (
 });
 
 test("organization and relationships provide directories and entity landing CTAs", () => {
-  for (const label of ["Company directory", "Contact directory", "Open contact", "Open company page", "Find related documents", "Send email", "Call", "WhatsApp"])
+  for (const label of ["Company directory", "Relationship desk", "Open contact", "Open company overview", "Find related documents", "Send email", "Call", "WhatsApp"])
     assert.match(shell, new RegExp(label));
 });
 
+test("relationship desk exposes operational contact groups, profile actions and safe headings", async () => {
+  for (const label of ["All contacts", "Main contacts", "Company-associated", "Email-ready", "Phone & WhatsApp", "Needs identification", "Needs company assignment", "Advisers & team", "Open full profile", "Copy details", "Data quality"])
+    assert.match(shell, new RegExp(label.replace("&", "&")));
+  const css = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  assert.match(css, /\.app-header h1[^}]*overflow-wrap: anywhere/);
+  assert.match(css, /\.entity-landing h2[^}]*overflow-wrap: anywhere/);
+});
+
 test("Second Brain exposes usable navigation and CTAs", () => {
-  for (const label of ["Browse documents", "Open session memory", "View provenance", "View document relationships", "Download latest", "Find related documents", "Open company page"])
+  for (const label of ["Browse documents", "Open session memory", "View provenance", "View document relationships", "Download latest", "Find related documents", "Open company overview"])
     assert.match(shell, new RegExp(label));
   for (const view of ["knowledge", "documents", "memory", "sessions"])
     assert.match(shell, new RegExp(`\\"${view}\\"`));
