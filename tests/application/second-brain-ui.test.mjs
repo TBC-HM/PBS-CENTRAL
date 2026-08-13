@@ -23,6 +23,14 @@ test("Second Brain exposes usable navigation and CTAs", () => {
     assert.match(shell, new RegExp(`\\"${view}\\"`));
 });
 
+test("main workspace visibly links to deployed operational surfaces", async () => {
+  const page = await readFile(new URL("../../app/workspace/page.tsx", import.meta.url), "utf8");
+  const shell = await readFile(new URL("../../components/workspace-shell.tsx", import.meta.url), "utf8");
+  for (const route of ["/workspace/upload", "/workspace/automations", "/workspace/companies/"])
+    assert.match(page + shell, new RegExp(route.replaceAll("/", "\\/")));
+  assert.match(shell, /Open automation control room/);
+});
+
 test("empty workflow states route users to a recovery action", () => {
   for (const label of ["Open Knowledge", "Review Inbox", "Open Work"])
     assert.match(shell, new RegExp(label));

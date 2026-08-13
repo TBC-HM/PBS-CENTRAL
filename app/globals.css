@@ -62,7 +62,8 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .quiet-action:disabled { cursor: not-allowed; opacity: .5; }
 
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 238px minmax(0, 1fr); background: #f5f3ed; }
-.upload-shortcut { position: fixed; z-index: 20; right: 1.25rem; bottom: 1.25rem; padding: .8rem 1rem; border: 1px solid var(--signal-dark); background: var(--signal-dark); color: white; text-decoration: none; box-shadow: 0 8px 24px rgba(16,36,46,.18); }
+.workspace-shortcuts { position: fixed; z-index: 20; right: 1.25rem; bottom: 1.25rem; display: flex; gap: .35rem; flex-wrap: wrap; justify-content: end; }
+.workspace-shortcuts a { padding: .8rem 1rem; border: 1px solid var(--signal-dark); background: var(--signal-dark); color: white; text-decoration: none; box-shadow: 0 8px 24px rgba(16,36,46,.18); }
 .app-sidebar { position: sticky; top: 0; height: 100vh; padding: 1.5rem 1rem; border-right: 1px solid #d8d4ca; display: flex; flex-direction: column; background: #ebe8df; }
 .app-brand { position: static; margin: .4rem .65rem 2.5rem; }
 .app-sidebar nav { display: grid; gap: .2rem; }
