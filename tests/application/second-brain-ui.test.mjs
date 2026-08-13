@@ -87,3 +87,14 @@ test("automation control uses tenant-checked idempotent workflow RPCs", async ()
   assert.match(migration, /on conflict\(workspace_id,idempotency_key\)/);
   assert.match(migration, /from public,anon/);
 });
+
+test("automation library contains approved operational starter workflows", async () => {
+  const control = await readFile(new URL("../../components/automation-control.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../supabase/migrations/20260813194356_seed_pbs_central_automation_library.sql", import.meta.url), "utf8");
+  for (const name of ["Morning briefing", "Document intake & classification", "Company registry monitoring", "Company relationship research", "Compliance obligation review", "Knowledge integrity review"])
+    assert.match(migration, new RegExp(name.replace(/[&]/g, "&")));
+  assert.match(migration, /where workspace\.slug = 'pbs-central'/);
+  assert.match(migration, /on conflict \(workspace_id, slug, version\) do update/);
+  assert.match(control, /Run automation/);
+  assert.match(control, /requires_approval/);
+});
