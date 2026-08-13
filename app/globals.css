@@ -373,6 +373,12 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .registry-form button { padding: 14px; border: 0; background: #102b33; color: #fff; cursor: pointer; }
 .goal-interview { display:grid; gap:14px }.goal-interview label{display:grid;gap:6px;color:var(--muted)}.goal-interview input,.goal-interview select,.goal-interview textarea{width:100%;padding:11px;border:1px solid #cfc9bc;background:white;color:var(--ink);font:inherit}.goal-interview textarea{min-height:80px;resize:vertical}.goal-interview button{padding:14px;border:0;background:var(--ink);color:white}.markdown-preview{max-width:100%;overflow:auto;white-space:pre-wrap;padding:16px;background:#f4f6f5;border-left:3px solid var(--signal);font:12px/1.55 var(--font-utility)}
 @media(max-width:760px){.registry-form{grid-template-columns:1fr;padding:20px}.registry-form form{grid-template-columns:1fr}.registry-form label,.registry-form button{grid-column:1}}
+.document-row { align-items: flex-start !important; }
+.document-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.document-actions form { display: flex; gap: 4px; }
+.document-actions a,.document-actions button,.document-actions select { min-height: 34px; padding: 7px 9px; border: 1px solid #bfc8c7; background: #fff; color: var(--ink); font: 11px/1 var(--font-utility); text-decoration: none; }
+.document-actions button { cursor: pointer; }
+.danger-action { margin-top: 20px; padding: 11px 14px; border: 1px solid #9e4d49; background: transparent; color: #7a2420; cursor: pointer; }
 
 @media (max-width: 520px) { .memory-grid, .category-grid, .company-tile-grid, .automation-card-grid, .project-tile-grid, .integration-grid { grid-template-columns: 1fr; } .contact-profile-head, .contact-quality { grid-template-columns: 1fr; display: grid; } .profile-link { justify-self: start; } }
 
