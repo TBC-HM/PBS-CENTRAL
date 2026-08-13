@@ -1,0 +1,44 @@
+name: PBS Central Documentation Integrity
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-integrity-daily
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Collect authorized live evidence with bounded retries
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.PBS_CENTRAL_SUPABASE_ACCESS_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.PBS_CENTRAL_VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: team_vKod3ZYFgteGCHsam7IG8tEb
+          VERCEL_PROJECT_ID: prj_IHH6tEJYAMI3ewJzGYHjI0mJ8fyh
+        run: node scripts/collect-documentation-evidence.mjs documentation-evidence.json
+      - name: Produce governed health result
+        run: node scripts/check-documentation-drift.mjs documentation-evidence.json > documentation-health.json
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-integrity-${{ github.run_id }}
+          path: |
+            documentation-evidence.json
+            documentation-health.json
+          if-no-files-found: warn
+          retention-days: 30
+

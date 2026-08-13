@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "riskClasses": {
+    "low": { "action": "automatic", "requiresApproval": false },
+    "medium": { "action": "review", "requiresApproval": true },
+    "high": { "action": "blocked", "requiresApproval": true }
+  },
+  "severityRisk": { "GREEN": "low", "AMBER": "medium", "RED": "high" },
+  "automaticFields": ["commit_sha", "deployment_id", "deployment_status", "check_result", "verified_at", "freshness_state"],
+  "protectedFields": ["architecture", "permissions", "role_mapping", "rls_policy", "security_boundary", "tenant_scope", "secret", "migration_history", "irreversible_operation"],
+  "requiredEvidence": ["source_ref", "observed_at", "previous_value", "proposed_value", "actor", "idempotency_key"],
+  "rollback": {
+    "preservePreviousValue": true,
+    "appendOnlyAudit": true,
+    "requireTargetVersion": true
+  }
+}

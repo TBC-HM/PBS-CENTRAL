@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "canonicalRepository": "TBC-HM/PBS-CENTRAL",
+  "supabaseProject": "gjxifmrqnzcrdhykpxqn",
+  "vercelProject": "pbs-central-knowledge-os-preview",
+  "severity": {
+    "RED": { "automaticRepair": false, "requiresHumanReview": true },
+    "AMBER": { "automaticRepair": false, "requiresEvidenceReview": true },
+    "GREEN": { "automaticRepair": true, "approvedFieldsOnly": true }
+  },
+  "approvedAutomaticFields": [
+    "commit_sha",
+    "deployment_id",
+    "deployment_status",
+    "check_result",
+    "verified_at",
+    "freshness_state"
+  ],
+  "protectedMeaning": [
+    "architecture",
+    "permissions",
+    "role_mapping",
+    "rls_policy",
+    "security_boundary",
+    "tenant_scope",
+    "secret",
+    "irreversible_operation"
+  ]
+}
