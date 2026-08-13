@@ -181,6 +181,19 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .contact-groups button.active { background: var(--ink); color: white; }
 .contact-groups button span { overflow-wrap: anywhere; }
 .contact-groups button strong { color: var(--signal); font: .68rem/1.3 var(--font-utility); }
+.mailing-bar { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding: .75rem; border: 1px solid #d8d4ca; border-top: 0; background: #eef3f2; }
+.mailing-bar > div { display: grid; margin-right: auto; }
+.mailing-bar span { color: var(--muted); font-size: .75rem; }
+.mailing-bar button, .mailing-bar a { padding: .6rem .75rem; border: 1px solid var(--ink); background: var(--ink); color: white; text-decoration: none; cursor: pointer; }
+.mailing-bar button.secondary { background: transparent; color: var(--ink); }
+.contact-list-row { display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: stretch; border: 1px solid transparent; }
+.contact-list-row + .contact-list-row { border-top-color: #e1ddd3; }
+.contact-list-row.selected { background: #e7f0f1; border-color: var(--signal); }
+.contact-list-row > label { display: grid; place-items: center; cursor: pointer; }
+.contact-list-row > button { min-width: 0; display: flex; justify-content: space-between; gap: 1rem; padding: .8rem .8rem .8rem 0; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.contact-list-row button span { display: grid; gap: .25rem; min-width: 0; }
+.contact-list-row small { color: var(--muted); overflow-wrap: anywhere; }
+.contact-list-row em { color: var(--signal); font: normal .62rem/1.4 var(--font-utility); text-transform: uppercase; }
 .contact-profile-head { min-width: 0; display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
 .contact-profile-head > div { min-width: 0; }
 .profile-link { flex: 0 0 auto; padding-top: .2rem; color: var(--signal-dark); font: .68rem/1.3 var(--font-utility); text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }

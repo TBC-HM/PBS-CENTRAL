@@ -17,7 +17,7 @@ test("organization and relationships provide directories and entity landing CTAs
 });
 
 test("relationship desk exposes operational contact groups, profile actions and safe headings", async () => {
-  for (const label of ["All contacts", "Main contacts", "Company-associated", "Email-ready", "Phone & WhatsApp", "Needs identification", "Needs company assignment", "Advisers & team", "Open full profile", "Copy details", "Data quality"])
+  for (const label of ["All contacts", "Main contacts", "Company-associated", "Email-ready", "Phone & WhatsApp", "Needs identification", "Needs company assignment", "Advisers & team", "Possible duplicates", "Select email-ready in view", "Compose BCC email", "Open full profile", "Copy details", "Data quality"])
     assert.match(shell, new RegExp(label.replace("&", "&")));
   const css = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
   assert.match(css, /\.app-header h1[^}]*overflow-wrap: anywhere/);
