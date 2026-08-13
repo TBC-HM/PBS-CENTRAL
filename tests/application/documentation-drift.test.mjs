@@ -32,3 +32,29 @@ test("deployment lag produces AMBER without weakening the source contract", () =
   lagging.vercel.sourceSha = "old";
   assert.equal(compareDocumentationState(contract, lagging).health, "AMBER");
 });
+
+test("stale authority documentation produces AMBER with a deterministic drift id", () => {
+  const stale = structuredClone(current);
+  stale.documentation.authorityVersion = 0;
+  const first = compareDocumentationState(contract, stale);
+  const second = compareDocumentationState(contract, stale);
+  const documentation = first.records.find(({ area }) => area === "documentation");
+  assert.equal(first.health, "AMBER");
+  assert.equal(documentation.status, "drift");
+  assert.equal(documentation.id, second.records.find(({ area }) => area === "documentation").id);
+});
+
+test("schema migration drift is RED and cannot be hidden by otherwise current sources", () => {
+  const drifted = structuredClone(current);
+  drifted.supabase.liveMigrations.push("2");
+  const result = compareDocumentationState(contract, drifted);
+  assert.equal(result.health, "RED");
+  assert.equal(result.records.find(({ area }) => area === "supabase").severity, "RED");
+});
+
+test("repository contradiction is RED even when deployment references that repository observation", () => {
+  const contradicted = structuredClone(current);
+  contradicted.github.repository = "unapproved/repository";
+  contradicted.vercel.sourceSha = contradicted.github.mainSha;
+  assert.equal(compareDocumentationState(contract, contradicted).health, "RED");
+});
