@@ -203,9 +203,9 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .contact-quality span.ready { border-color: #9fbbb0; background: #edf5f1; color: #315e4c; }
 .directory-note { margin-top: 1rem; padding: .75rem; background: #f2efe7; color: var(--muted); }
 .company-tile-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; margin-top: 1rem; }
-.company-tile { min-height: 310px; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; border: 1px solid #d8d4ca; background: rgba(255,255,255,.72); color: var(--ink); text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease; }
+.company-tile { min-width: 0; min-height: 310px; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; overflow: hidden; border: 1px solid #d8d4ca; background: rgba(255,255,255,.72); color: var(--ink); text-decoration: none; transition: border-color .15s ease, transform .15s ease, background .15s ease; }
 .company-tile:hover, .company-tile:focus-visible { border-color: var(--signal); background: white; transform: translateY(-2px); outline: none; }
-.company-tile h2 { margin: 0; font: 400 clamp(1.8rem,3vw,3rem)/.95 var(--font-display); letter-spacing: -.03em; }
+.company-tile h2 { max-width: 100%; margin: 0; overflow-wrap: anywhere; word-break: normal; hyphens: auto; font: 400 clamp(1.55rem,2.15vw,2.55rem)/1 var(--font-display); letter-spacing: -.025em; }
 .company-tile p:not(.eyebrow) { color: var(--muted); line-height: 1.45; }
 .company-tile dl { margin: 1.5rem 0; }
 .company-tile dl div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ddd8cc; }
@@ -371,6 +371,7 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .registry-form input,.registry-form select,.registry-form textarea { width: 100%; padding: 12px; border: 1px solid #cfc9bc; background: #fff; color: #102b33; font: 400 15px/1.4 var(--font-sans); text-transform: none; letter-spacing: 0; }
 .registry-form .wide,.registry-form button { grid-column: 1/-1; }
 .registry-form button { padding: 14px; border: 0; background: #102b33; color: #fff; cursor: pointer; }
+.goal-interview { display:grid; gap:14px }.goal-interview label{display:grid;gap:6px;color:var(--muted)}.goal-interview input,.goal-interview select,.goal-interview textarea{width:100%;padding:11px;border:1px solid #cfc9bc;background:white;color:var(--ink);font:inherit}.goal-interview textarea{min-height:80px;resize:vertical}.goal-interview button{padding:14px;border:0;background:var(--ink);color:white}.markdown-preview{max-width:100%;overflow:auto;white-space:pre-wrap;padding:16px;background:#f4f6f5;border-left:3px solid var(--signal);font:12px/1.55 var(--font-utility)}
 @media(max-width:760px){.registry-form{grid-template-columns:1fr;padding:20px}.registry-form form{grid-template-columns:1fr}.registry-form label,.registry-form button{grid-column:1}}
 
 @media (max-width: 520px) { .memory-grid, .category-grid, .company-tile-grid, .automation-card-grid, .project-tile-grid, .integration-grid { grid-template-columns: 1fr; } .contact-profile-head, .contact-quality { grid-template-columns: 1fr; display: grid; } .profile-link { justify-self: start; } }
