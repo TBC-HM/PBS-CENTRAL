@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -42,6 +42,7 @@ export function WorkspaceShell({ workspace, role, evidence, approvals, jobs, doc
   const [selectedContact, setSelectedContact] = useState(contacts.find((item) => item.name !== "(unnamed)")?.id ?? contacts[0]?.id ?? "");
   const [localApprovals, setLocalApprovals] = useState(approvals);
   const [localJobs, setLocalJobs] = useState(jobs);
+  useEffect(() => { const target=window.location.hash.slice(1); const match=areas.find(item=>item.toLowerCase()===target.toLowerCase()); if(match)setArea(match); }, []);
   const selected = useMemo(() => evidence.find((item) => item.id === selectedEvidence), [evidence, selectedEvidence]);
   const currentDocument = documents.find((item) => item.id === selectedDocument);
   const pending = localApprovals.find((item) => item.status === "pending");
