@@ -224,6 +224,23 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .upload-panel button:disabled { opacity: .45; cursor: not-allowed; }
 .upload-file { display: flex; justify-content: space-between; gap: 1rem; margin: 1rem 0; padding: .8rem; background: #e7f0f1; }
 .upload-file span { color: var(--muted); }
+.upload-container { max-width: 1080px; }
+.folder-dropzone { display: grid; place-items: center; gap: .75rem; min-height: 300px; margin: 1.5rem 0; padding: 2rem; border: 1px dashed var(--signal); background: #edf3f4; text-align: center; transition: background .15s ease, border-color .15s ease; }
+.folder-dropzone.dragging { border-color: var(--ink); background: #dcebee; }
+.folder-dropzone > strong { font: 400 clamp(2rem,5vw,4rem)/1 var(--font-display); }
+.folder-dropzone > span { max-width: 620px; color: var(--muted); line-height: 1.5; }
+.file-picker { display: inline-block !important; margin: 0 !important; padding: .8rem 1rem; border: 1px solid var(--ink); background: var(--ink); color: white !important; cursor: pointer; }
+.file-picker input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; pointer-events: none; }
+.upload-queue { max-height: 420px; overflow: auto; margin: 1rem 0; border: 1px solid #d8d4ca; background: white; }
+.upload-queue header, .upload-queue > div { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid #e1ddd3; }
+.upload-queue header { position: sticky; top: 0; z-index: 1; background: #f2efe7; }
+.upload-queue > div > span { min-width: 0; display: grid; gap: .2rem; }
+.upload-queue > div strong { overflow-wrap: anywhere; }
+.upload-queue small { color: var(--muted); }
+.upload-queue em { font: normal .62rem/1 var(--font-utility); text-transform: uppercase; }
+.upload-queue em.complete { color: #27734f; }
+.upload-queue em.error { color: #a33d2c; }
+.upload-queue em.uploading { color: var(--signal); }
 .automation-control { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: 1rem; }
 .automation-control > article { border: 1px solid #d8d4ca; background: rgba(255,255,255,.72); padding: clamp(1.25rem,3vw,2.5rem); }
 .automation-control h2 { margin: 0; font: 400 clamp(2.2rem,5vw,4rem)/.95 var(--font-display); }

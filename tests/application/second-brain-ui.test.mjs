@@ -77,6 +77,17 @@ test("document upload uses private tenant-scoped storage and atomic registry RPC
   assert.match(migration, /storage\.objects/);
 });
 
+test("document intake accepts multi-file and full-folder batches", async () => {
+  const upload = await readFile(new URL("../../components/document-upload.tsx", import.meta.url), "utf8");
+  assert.match(upload, /multiple/);
+  assert.match(upload, /webkitdirectory/);
+  assert.match(upload, /webkitGetAsEntry/);
+  assert.match(upload, /filesFromEntry/);
+  assert.match(upload, /relativePath/);
+  assert.match(upload, /All file types are accepted/);
+  assert.doesNotMatch(upload, /accept=/);
+});
+
 test("automation control uses tenant-checked idempotent workflow RPCs", async () => {
   const control = await readFile(new URL("../../components/automation-control.tsx", import.meta.url), "utf8");
   const migration = await readFile(new URL("../../supabase/migrations/20260813161000_governed_workflow_control.sql", import.meta.url), "utf8");
