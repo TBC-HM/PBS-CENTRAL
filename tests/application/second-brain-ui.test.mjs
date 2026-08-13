@@ -97,6 +97,8 @@ test("company dossier exposes legal, people, relationship, banking and obligatio
   assert.match(page, /legacy task table is intentionally excluded/i);
 });
 
+test("deterministic legacy ownership and exact company matches are promoted with provenance",async()=>{const migration=await readFile(new URL("../../supabase/migrations/20260813210745_promote_legacy_relationships.sql",import.meta.url),"utf8");const company=await readFile(new URL("../../app/workspace/companies/[id]/page.tsx",import.meta.url),"utf8");assert.match(migration,/parent_name/);assert.match(migration,/match_count=1/);assert.match(migration,/contact\.company_promoted/);assert.match(migration,/company\.relationship_promoted/);assert.match(company,/Source folders/);assert.match(company,/source_metadata/);});
+
 test("document upload uses private tenant-scoped storage and atomic registry RPC", async () => {
   const upload = await readFile(new URL("../../components/document-upload.tsx", import.meta.url), "utf8");
   const migration = await readFile(new URL("../../supabase/migrations/20260813152000_document_upload_registration.sql", import.meta.url), "utf8");
