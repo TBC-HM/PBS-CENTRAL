@@ -49,3 +49,14 @@ test("document upload uses private tenant-scoped storage and atomic registry RPC
   assert.match(migration, /target_workspace::text \|\| '\/%'/);
   assert.match(migration, /storage\.objects/);
 });
+
+test("automation control uses tenant-checked idempotent workflow RPCs", async () => {
+  const control = await readFile(new URL("../../components/automation-control.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../supabase/migrations/20260813161000_governed_workflow_control.sql", import.meta.url), "utf8");
+  assert.match(control, /kos_create_workflow/);
+  assert.match(control, /kos_queue_workflow/);
+  assert.match(migration, /kos_has_role/);
+  assert.match(migration, /kos_workflow_runs_idempotency/);
+  assert.match(migration, /on conflict\(workspace_id,idempotency_key\)/);
+  assert.match(migration, /from public,anon/);
+});
