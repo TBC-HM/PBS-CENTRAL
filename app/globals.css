@@ -328,6 +328,15 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
 .project-tile dl div, .integration-grid dl div { display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid #ddd8cc; }
 .project-tile dd, .integration-grid dd { margin:0;text-align:right;overflow-wrap:anywhere; }
 .project-tile>span { color:var(--signal-dark);font:.68rem/1.3 var(--font-utility);text-transform:uppercase; }
+.knowledge-query { display:flex;align-items:end;gap:.7rem;margin:1rem 0;padding:1rem;border:1px solid #d8d4ca;background:rgba(255,255,255,.72); }
+.knowledge-query label { flex:1;display:grid;gap:.35rem;font:.68rem/1.3 var(--font-utility);text-transform:uppercase;letter-spacing:.06em; }
+.knowledge-query input { padding:.75rem;border:1px solid #b8b4aa;background:white;font:inherit;text-transform:none;letter-spacing:0; }
+.knowledge-query button { padding:.75rem 1rem;border:1px solid var(--ink);background:var(--ink);color:white; }
+.record-list a { display:flex;justify-content:space-between;gap:1rem;padding:.85rem;border-bottom:1px solid #ddd8cc;color:var(--ink);text-decoration:none; }
+.record-list a.selected { background:#e8f3f5; }
+.record-list a span { display:grid;gap:.25rem; }
+.record-list a small,.record-list a em { color:var(--muted);font-style:normal; }
+.knowledge-body { white-space:pre-wrap;line-height:1.55;max-height:28rem;overflow:auto; }
 
 @media (max-width: 1240px) {
   .company-tile-grid, .project-tile-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
