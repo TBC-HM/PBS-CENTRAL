@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "canonicalAuthority": [
+    "kos_documents",
+    "kos_document_versions",
+    "kos_knowledge_items",
+    "kos_knowledge_sources",
+    "kos_agent_sessions",
+    "kos_agent_handovers"
+  ],
+  "evidenceIsMemory": false,
+  "tiers": {
+    "working": { "durable": false, "defaultTtlHours": 24, "humanApproval": false },
+    "session": { "durable": true, "defaultTtlDays": 30, "humanApproval": false },
+    "candidate": { "durable": true, "defaultReviewDays": 14, "humanApproval": false },
+    "verified": { "durable": true, "defaultReviewDays": 180, "humanApproval": true },
+    "policy": { "durable": true, "defaultReviewDays": 90, "humanApproval": true, "restricted": true }
+  },
+  "states": ["active", "expired", "superseded", "archived", "tombstoned", "legal_hold"],
+  "transitions": [
+    { "from": "working", "to": "session", "actors": ["system", "member", "admin", "owner"], "requiresEvidence": true },
+    { "from": "session", "to": "candidate", "actors": ["member", "admin", "owner"], "requiresEvidence": true },
+    { "from": "candidate", "to": "verified", "actors": ["admin", "owner"], "requiresEvidence": true, "requiresApproval": true },
+    { "from": "verified", "to": "policy", "actors": ["owner"], "requiresEvidence": true, "requiresApproval": true },
+    { "from": "candidate", "to": "archived", "actors": ["member", "admin", "owner"] },
+    { "from": "verified", "to": "superseded", "actors": ["admin", "owner"], "requiresEvidence": true, "requiresApproval": true },
+    { "from": "policy", "to": "superseded", "actors": ["owner"], "requiresEvidence": true, "requiresApproval": true }
+  ],
+  "rules": {
+    "confidenceAuthorizesPromotion": false,
+    "agentsMaySelfPromote": false,
+    "workspaceScopeRequired": true,
+    "sourceProvenanceRequired": true,
+    "appendOnlyHistory": true,
+    "legalHoldOverridesExpiry": true,
+    "verifiedOrPolicyRequiresHuman": true
+  }
+}

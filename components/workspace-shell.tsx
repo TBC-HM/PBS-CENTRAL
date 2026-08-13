@@ -7,20 +7,25 @@ import { SignOutButton } from "@/components/sign-out-button";
 type Evidence = { id: string; title: string; body: string; verification_status: string };
 type Approval = { id: string; subject_id: string; action: string; status: string; rationale: string | null };
 type Job = { id: string; resource_id: string; result: Record<string, unknown> | null };
+type DocumentRecord = { id: string; title: string; document_type: string | null; status: string; updated_at: string };
+type SessionRecord = { id: string; resume_key: string; objective: string; status: string; current_phase: string | null; updated_at: string };
+type HandoverRecord = { id: string; session_id: string; sequence: number; summary: string; completed: unknown; risks: unknown; next_actions: unknown; created_at: string };
+type SourceRecord = { knowledge_id: string; source_type: string; source_id: string; locator: Record<string, unknown>; quote: string | null };
 type DecisionResult = { decision_id: string; approval_id: string };
 type ActionResult = { job_id: string; replayed: boolean };
+type KnowledgeView = "knowledge" | "documents" | "memory" | "sessions";
 
 const areas = ["Home", "Inbox", "Work", "Organization", "Relationships", "Knowledge", "Automations", "Insights"];
 
-export function WorkspaceShell({ workspace, role, evidence, approvals, jobs }: {
-  workspace: { id: string; name: string; slug: string };
-  role: string;
-  evidence: Evidence[];
-  approvals: Approval[];
-  jobs: Job[];
+export function WorkspaceShell({ workspace, role, evidence, approvals, jobs, documents, sessions, handovers, sources }: {
+  workspace: { id: string; name: string; slug: string }; role: string; evidence: Evidence[]; approvals: Approval[]; jobs: Job[];
+  documents: DocumentRecord[]; sessions: SessionRecord[]; handovers: HandoverRecord[]; sources: SourceRecord[];
 }) {
   const [area, setArea] = useState("Home");
+  const [view, setView] = useState<KnowledgeView>("knowledge");
+  const [search, setSearch] = useState("");
   const [selectedEvidence, setSelectedEvidence] = useState(evidence[0]?.id ?? "");
+  const [selectedDocument, setSelectedDocument] = useState(documents[0]?.id ?? "");
   const [question, setQuestion] = useState("What decision does this verified evidence support today?");
   const [decision, setDecision] = useState("Proceed with the evidence-backed operating response.");
   const [action, setAction] = useState("Create and verify the approved operating follow-up.");
@@ -29,122 +34,44 @@ export function WorkspaceShell({ workspace, role, evidence, approvals, jobs }: {
   const [localApprovals, setLocalApprovals] = useState(approvals);
   const [localJobs, setLocalJobs] = useState(jobs);
   const selected = useMemo(() => evidence.find((item) => item.id === selectedEvidence), [evidence, selectedEvidence]);
+  const currentDocument = documents.find((item) => item.id === selectedDocument);
   const pending = localApprovals.find((item) => item.status === "pending");
   const approved = localApprovals.find((item) => item.status === "approved");
   const activeJob = localJobs[0];
   const canApprove = role === "owner" || role === "admin";
+  const needle = search.trim().toLowerCase();
+  const matchingEvidence = evidence.filter((item) => !needle || `${item.title} ${item.body}`.toLowerCase().includes(needle));
+  const matchingDocuments = documents.filter((item) => !needle || `${item.title} ${item.document_type ?? ""}`.toLowerCase().includes(needle));
+  const matchingSessions = sessions.filter((item) => !needle || `${item.resume_key} ${item.objective}`.toLowerCase().includes(needle));
+  const selectedSources = sources.filter((item) => item.knowledge_id === selectedEvidence);
+  const categories = Array.from(new Set(documents.map((item) => item.document_type ?? "Uncategorized"))).sort();
 
-  async function recordDecision(event: FormEvent) {
-    event.preventDefault();
-    if (!selected) return;
-    await mutate(async () => {
-      const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_record_decision", {
-        target_workspace: workspace.id, evidence_id: selected.id,
-        decision_title: `Decision · ${selected.title}`, decision_body: `${question}\n\n${decision}`, requested_action: action
-      });
-      if (error) throw error;
-      const created = data?.[0] as DecisionResult | undefined;
-      if (created) setLocalApprovals((items) => [{ id: created.approval_id, subject_id: created.decision_id, action, status: "pending", rationale: null }, ...items]);
-      setMessage("Decision recorded with its citation. Approval is now waiting in Inbox.");
-      setArea("Inbox");
-    });
-  }
+  function openKnowledge(nextView: KnowledgeView, nextSearch = "") { setView(nextView); setSearch(nextSearch); setArea("Knowledge"); }
+  async function mutate(operation: () => Promise<void>) { setBusy(true); setMessage(""); try { await operation(); } catch (error) { setMessage(error instanceof Error ? error.message : "The governed transition could not be completed."); } finally { setBusy(false); } }
+  async function recordDecision(event: FormEvent) { event.preventDefault(); if (!selected) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_record_decision", { target_workspace: workspace.id, evidence_id: selected.id, decision_title: `Decision · ${selected.title}`, decision_body: `${question}\n\n${decision}`, requested_action: action }); if (error) throw error; const created = data?.[0] as DecisionResult | undefined; if (created) setLocalApprovals((items) => [{ id: created.approval_id, subject_id: created.decision_id, action, status: "pending", rationale: null }, ...items]); setMessage("Decision recorded with its citation. Approval is waiting in Inbox."); setArea("Inbox"); }); }
+  async function decideApproval(approve: boolean) { if (!pending) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_decide_approval", { target_workspace: workspace.id, target_approval: pending.id, approve, rationale_value: approve ? "Approved from the governed review." : "Rejected from the governed review." }); if (error) throw error; setLocalApprovals((items) => items.map((item) => item.id === pending.id ? { ...item, ...(data as Partial<Approval>) } : item)); setMessage(approve ? "Approval granted. The action is eligible to run." : "Approval rejected. The action remains blocked."); setArea("Work"); }); }
+  async function executeAction() { if (!approved) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_execute_action", { target_workspace: workspace.id, target_approval: approved.id, idempotency_key_value: `slice-01-${approved.id}` }); if (error) throw error; const created = data?.[0] as ActionResult | undefined; if (created) setLocalJobs((items) => [{ id: created.job_id, resource_id: approved.subject_id, result: { verification_status: "awaiting_evidence" } }, ...items.filter((item) => item.id !== created.job_id)]); setMessage(created?.replayed ? "The original action result was reopened." : "Approved action executed once. Verify its outcome with evidence."); setArea("Insights"); }); }
+  async function verifyOutcome() { if (!activeJob || !selected) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_verify_outcome", { target_workspace: workspace.id, target_job: activeJob.id, evidence_id: selected.id, outcome_summary: `Verified against ${selected.title}.` }); if (error) throw error; setLocalJobs((items) => items.map((item) => item.id === activeJob.id ? { ...item, result: data.result as Record<string, unknown> } : item)); setMessage("Outcome verified with cited evidence. The flow is ready for handover."); setArea("Automations"); }); }
+  function downloadJson(filename: string, payload: unknown) { const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); }
+  function downloadHandover() { downloadJson(`pbs-central-slice-01-handover-${workspace.slug}.json`, { objective: "Complete Production Slice 01 governed operating loop", workspace: workspace.slug, evidence: selected ?? null, approval: localApprovals[0] ?? null, action: activeJob ?? null, outcome: activeJob?.result ?? null, generated_at: new Date().toISOString() }); }
 
-  async function decideApproval(approve: boolean) {
-    if (!pending) return;
-    await mutate(async () => {
-      const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_decide_approval", {
-        target_workspace: workspace.id, target_approval: pending.id, approve, rationale_value: approve ? "Approved from the governed Slice 01 review." : "Rejected from the governed Slice 01 review."
-      });
-      if (error) throw error;
-      setLocalApprovals((items) => items.map((item) => item.id === pending.id ? { ...item, ...(data as Partial<Approval>) } : item));
-      setMessage(approve ? "Approval granted. The action is eligible to run." : "Approval rejected. The action remains blocked.");
-      setArea("Work");
-    });
-  }
-
-  async function executeAction() {
-    if (!approved) return;
-    await mutate(async () => {
-      const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_execute_action", {
-        target_workspace: workspace.id, target_approval: approved.id, idempotency_key_value: `slice-01-${approved.id}`
-      });
-      if (error) throw error;
-      const created = data?.[0] as ActionResult | undefined;
-      if (created) setLocalJobs((items) => [{ id: created.job_id, resource_id: approved.subject_id, result: { verification_status: "awaiting_evidence" } }, ...items.filter((item) => item.id !== created.job_id)]);
-      setMessage(created?.replayed ? "Action was already executed; the original result was reopened." : "Approved action executed once. Add cited evidence to verify the outcome.");
-      setArea("Insights");
-    });
-  }
-
-  async function verifyOutcome() {
-    if (!activeJob || !selected) return;
-    await mutate(async () => {
-      const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_verify_outcome", {
-        target_workspace: workspace.id, target_job: activeJob.id, evidence_id: selected.id,
-        outcome_summary: `Verified against ${selected.title}.`
-      });
-      if (error) throw error;
-      setLocalJobs((items) => items.map((item) => item.id === activeJob.id ? { ...item, result: data.result as Record<string, unknown> } : item));
-      setMessage("Outcome verified with cited evidence. The flow is ready for structured handover.");
-      setArea("Automations");
-    });
-  }
-
-  async function mutate(operation: () => Promise<void>) {
-    setBusy(true); setMessage("");
-    try { await operation(); } catch (error) { setMessage(error instanceof Error ? error.message : "The governed transition could not be completed."); }
-    finally { setBusy(false); }
-  }
-
-  function downloadHandover() {
-    const payload = {
-      objective: "Complete Production Slice 01 governed operating loop",
-      workspace: workspace.slug,
-      evidence: selected ? { id: selected.id, title: selected.title, verification_status: selected.verification_status } : null,
-      approval: localApprovals[0] ?? null,
-      action: activeJob ?? null,
-      outcome: activeJob?.result ?? null,
-      generated_at: new Date().toISOString()
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = url; link.download = `pbs-central-slice-01-handover-${workspace.slug}.json`; link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  return (
-    <main className="app-shell">
-      <aside className="app-sidebar">
-        <div className="brand-lockup app-brand"><span>PBS</span><strong>CENTRAL</strong></div>
-        <nav aria-label="Primary workspace">
-          {areas.map((name) => <button key={name} className={area === name ? "active" : ""} onClick={() => setArea(name)}><span>{String(areas.indexOf(name) + 1).padStart(2, "0")}</span>{name}</button>)}
-        </nav>
-        <div className="sidebar-foot"><small>{workspace.name}<br />{role}</small><SignOutButton /></div>
-      </aside>
-      <section className="app-content">
-        <header className="app-header"><div><p className="eyebrow">{area} · Production Slice 01</p><h1>{area === "Home" ? "Morning briefing" : area}</h1></div><div className="flow-meter"><span>Evidence</span><span>Decision</span><span>Approval</span><span>Outcome</span></div></header>
-        {message && <div className="app-notice" role="status">{message}</div>}
-        {area === "Home" && <section className="briefing-grid">
-          <article className="briefing-lead"><p className="eyebrow">Owner briefing</p><h2>One governed decision from evidence to verified outcome.</h2><p>The morning brief turns a cited operating signal into a bounded action. Nothing executes before approval.</p><button onClick={() => setArea("Knowledge")}>Open cited evidence</button></article>
-          <FlowLedger approvals={localApprovals} jobs={localJobs} />
-        </section>}
-        {area === "Knowledge" && <section className="workspace-two-pane">
-          <div className="evidence-list"><p className="eyebrow">Verified evidence</p>{evidence.length ? evidence.map((item) => <button key={item.id} className={selectedEvidence === item.id ? "selected" : ""} onClick={() => setSelectedEvidence(item.id)}><strong>{item.title}</strong><span>{item.verification_status}</span></button>) : <EmptyState text="No verified evidence is available yet." />}</div>
-          <form className="decision-panel" onSubmit={recordDecision}><p className="eyebrow">Evidence question</p><h2>{selected?.title ?? "Select evidence"}</h2><blockquote>{selected?.body ?? "Choose a verified item to begin."}</blockquote><label>Question<textarea value={question} onChange={(e) => setQuestion(e.target.value)} /></label><label>Recorded decision<textarea value={decision} onChange={(e) => setDecision(e.target.value)} /></label><label>Action requiring approval<input value={action} onChange={(e) => setAction(e.target.value)} /></label><button disabled={busy || !selected}>Record decision and request approval</button></form>
-        </section>}
-        {area === "Inbox" && <section className="approval-card"><p className="eyebrow">Approval inbox</p>{pending ? <><h2>{pending.action}</h2><p>Requested from a recorded, cited decision. Owner/admin authority is required.</p><div className="button-row"><button disabled={busy || !canApprove} onClick={() => decideApproval(true)}>Approve action</button><button className="secondary" disabled={busy || !canApprove} onClick={() => decideApproval(false)}>Reject</button></div>{!canApprove && <p className="permission-note">Your role can review this request but cannot decide it.</p>}</> : <EmptyState text="No approval is waiting." />}</section>}
-        {area === "Work" && <section className="approval-card"><p className="eyebrow">Approved action</p>{approved ? <><h2>{approved.action}</h2><p>The approval gate is satisfied. Execution uses an idempotency key and writes an audit event.</p><button disabled={busy} onClick={executeAction}>Execute approved action</button></> : <EmptyState text="No approved action is ready." />}</section>}
-        {area === "Insights" && <section className="approval-card"><p className="eyebrow">Verified outcome</p>{activeJob ? <><h2>{activeJob.result?.verification_status === "verified" ? "Outcome verified" : "Verification required"}</h2><p>{activeJob.result?.verification_status === "verified" ? String(activeJob.result.summary ?? "Verified with cited evidence.") : "Select the cited evidence in Knowledge, then verify the completed action."}</p><button disabled={busy || activeJob.result?.verification_status === "verified" || !selected} onClick={verifyOutcome}>Verify outcome with citation</button></> : <EmptyState text="No executed action is awaiting verification." />}</section>}
-        {area === "Automations" && <section className="approval-card"><p className="eyebrow">Structured handover</p><h2>{activeJob?.result?.verification_status === "verified" ? "Flow ready for handover" : "Handover waits for a verified outcome"}</h2><p>The final handover preserves objective, evidence, decision, approval, action, outcome, tests and next action.</p><button disabled={activeJob?.result?.verification_status !== "verified"} onClick={downloadHandover}>Download structured handover</button></section>}
-        {(area === "Organization" || area === "Relationships") && <EmptyState text={`${area} is present in the canonical architecture; Slice 01 adds no new ${area.toLowerCase()} module.`} />}
-      </section>
-    </main>
-  );
+  return <main className="app-shell"><aside className="app-sidebar"><div className="brand-lockup app-brand"><span>PBS</span><strong>CENTRAL</strong></div><nav aria-label="Primary workspace">{areas.map((name, index) => <button key={name} className={area === name ? "active" : ""} onClick={() => setArea(name)}><span>{String(index + 1).padStart(2, "0")}</span>{name}</button>)}</nav><div className="sidebar-foot"><small>{workspace.name}<br />{role}</small><SignOutButton /></div></aside>
+    <section className="app-content"><header className="app-header"><div><p className="eyebrow">{area} · PBS Central</p><h1>{area === "Home" ? "Morning briefing" : area}</h1></div><div className="flow-meter"><span>{documents.length} docs</span><span>{evidence.length} knowledge</span><span>{sessions.length} sessions</span><span>{handovers.length} handovers</span></div></header>{message && <div className="app-notice" role="status">{message}</div>}
+      {area === "Home" && <section className="briefing-grid"><article className="briefing-lead"><p className="eyebrow">Owner workspace</p><h2>Your operating memory is ready to use.</h2><p>Open cited knowledge, browse the documents you uploaded, or continue the governed evidence-to-outcome flow.</p><div className="button-row"><button onClick={() => openKnowledge("knowledge")}>Open cited evidence</button><button className="secondary" onClick={() => openKnowledge("documents")}>Browse documents</button><button className="secondary" onClick={() => openKnowledge("sessions")}>Open session memory</button></div></article><FlowLedger approvals={localApprovals} jobs={localJobs} /></section>}
+      {area === "Knowledge" && <KnowledgeHub view={view} setView={setView} search={search} setSearch={setSearch} evidence={matchingEvidence} selected={selected} selectedEvidence={selectedEvidence} setSelectedEvidence={setSelectedEvidence} sources={selectedSources} documents={matchingDocuments} currentDocument={currentDocument} selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument} sessions={matchingSessions} handovers={handovers} busy={busy} question={question} setQuestion={setQuestion} decision={decision} setDecision={setDecision} action={action} setAction={setAction} recordDecision={recordDecision} setArea={setArea} downloadJson={downloadJson} />}
+      {area === "Inbox" && <section className="approval-card"><p className="eyebrow">Approval inbox</p>{pending ? <><h2>{pending.action}</h2><p>Requested from a recorded, cited decision. Owner/admin authority is required.</p><div className="button-row"><button disabled={busy || !canApprove} onClick={() => decideApproval(true)}>Approve action</button><button className="secondary" disabled={busy || !canApprove} onClick={() => decideApproval(false)}>Reject</button></div></> : <EmptyState text="No approval is waiting. Open Knowledge to record a cited decision." cta="Open Knowledge" onAction={() => openKnowledge("knowledge")} />}</section>}
+      {area === "Work" && <section className="approval-card"><p className="eyebrow">Approved action</p>{approved ? <><h2>{approved.action}</h2><p>The approval gate is satisfied. Execution is idempotent and audited.</p><button disabled={busy} onClick={executeAction}>Execute approved action</button></> : <EmptyState text="No approved action is ready." cta="Review Inbox" onAction={() => setArea("Inbox")} />}</section>}
+      {area === "Insights" && <section className="approval-card"><p className="eyebrow">Verified outcome</p>{activeJob ? <><h2>{activeJob.result?.verification_status === "verified" ? "Outcome verified" : "Verification required"}</h2><p>{String(activeJob.result?.summary ?? "Select cited knowledge, then verify the completed action.")}</p><button disabled={busy || activeJob.result?.verification_status === "verified" || !selected} onClick={verifyOutcome}>Verify outcome with citation</button></> : <EmptyState text="No executed action is awaiting verification." cta="Open Work" onAction={() => setArea("Work")} />}</section>}
+      {area === "Automations" && <section className="approval-card"><p className="eyebrow">Structured handover</p><h2>{activeJob?.result?.verification_status === "verified" ? "Flow ready for handover" : "Handover waits for a verified outcome"}</h2><p>Download the governed record after the outcome is verified.</p><button disabled={activeJob?.result?.verification_status !== "verified"} onClick={downloadHandover}>Download structured handover</button></section>}
+      {area === "Organization" && <section className="category-board"><div><p className="eyebrow">Document settings</p><h2>Categories in your registry</h2><p>These categories come from your uploaded PBS CENTRAL documents. Select one to filter the document browser.</p></div><div className="category-grid">{categories.map((category) => <button key={category} onClick={() => openKnowledge("documents", category === "Uncategorized" ? "" : category)}><strong>{category}</strong><span>{documents.filter((item) => (item.document_type ?? "Uncategorized") === category).length} documents</span></button>)}</div></section>}
+      {area === "Relationships" && <section className="relationship-board"><div><p className="eyebrow">Governed graph projection</p><h2>{documents.length + evidence.length} nodes · {sources.length} source links</h2><p>Only canonical relationships from this workspace appear here.</p><div className="button-row"><button onClick={() => openKnowledge("documents")}>Open documents</button><button className="secondary" onClick={() => openKnowledge("knowledge")}>Open knowledge</button></div></div><ol>{sources.slice(0, 12).map((source, index) => <li key={`${source.knowledge_id}-${source.source_id}-${index}`}><span>{source.source_type}</span><strong>{evidence.find((item) => item.id === source.knowledge_id)?.title ?? "Linked knowledge"}</strong><small>{source.quote ?? "Source relationship recorded"}</small></li>)}</ol></section>}
+    </section></main>;
 }
 
-function EmptyState({ text }: { text: string }) { return <div className="empty-state"><p>{text}</p></div>; }
-function FlowLedger({ approvals, jobs }: { approvals: Approval[]; jobs: Job[] }) {
-  const outcome = jobs[0]?.result?.verification_status;
-  return <ol className="flow-ledger"><li className="done">Briefing <span>ready</span></li><li className="done">Evidence <span>cited</span></li><li className={approvals.length ? "done" : ""}>Decision <span>{approvals.length ? "recorded" : "waiting"}</span></li><li className={approvals.some((a) => a.status === "approved") ? "done" : ""}>Approval <span>{approvals[0]?.status ?? "waiting"}</span></li><li className={outcome === "verified" ? "done" : ""}>Outcome <span>{String(outcome ?? "waiting")}</span></li></ol>;
-}
+function KnowledgeHub(props: any) { const { view, setView, search, setSearch, evidence, selected, selectedEvidence, setSelectedEvidence, sources, documents, currentDocument, selectedDocument, setSelectedDocument, sessions, handovers, busy, question, setQuestion, decision, setDecision, action, setAction, recordDecision, setArea, downloadJson } = props; return <section className="knowledge-hub"><div className="knowledge-tools"><div className="knowledge-tabs" role="tablist">{(["knowledge", "documents", "memory", "sessions"] as KnowledgeView[]).map((item) => <button role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item}</button>)}</div><label className="knowledge-search"><span>Search this workspace</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search titles, evidence and sessions" /></label></div>
+  {view === "knowledge" && <section className="workspace-two-pane"><div className="evidence-list"><p className="eyebrow">Verified knowledge</p>{evidence.length ? evidence.map((item: Evidence) => <button key={item.id} className={selectedEvidence === item.id ? "selected" : ""} onClick={() => setSelectedEvidence(item.id)}><strong>{item.title}</strong><span>{item.verification_status}</span></button>) : <EmptyState text="No knowledge matches this search." />}</div><form className="decision-panel" onSubmit={recordDecision}><p className="eyebrow">Cited knowledge</p><h2>{selected?.title ?? "Select knowledge"}</h2><blockquote>{selected?.body ?? "Choose a verified item to begin."}</blockquote><div className="source-strip"><strong>{sources.length}</strong><span>linked sources</span><button type="button" onClick={() => setArea("Relationships")}>View provenance</button></div><label>Question<textarea value={question} onChange={(event) => setQuestion(event.target.value)} /></label><label>Recorded decision<textarea value={decision} onChange={(event) => setDecision(event.target.value)} /></label><label>Action requiring approval<input value={action} onChange={(event) => setAction(event.target.value)} /></label><button disabled={busy || !selected}>Record decision and request approval</button></form></section>}
+  {view === "documents" && <section className="workspace-two-pane"><div className="record-list"><p className="eyebrow">Document registry</p>{documents.length ? documents.map((item: DocumentRecord) => <button key={item.id} className={selectedDocument === item.id ? "selected" : ""} onClick={() => setSelectedDocument(item.id)}><span><strong>{item.title}</strong><small>{item.document_type ?? "Uncategorized"}</small></span><em>{item.status}</em></button>) : <EmptyState text="No documents match this search." />}</div><article className="record-detail"><p className="eyebrow">Document details</p><h2>{currentDocument?.title ?? "Select a document"}</h2>{currentDocument && <><dl><div><dt>Category</dt><dd>{currentDocument.document_type ?? "Uncategorized"}</dd></div><div><dt>Status</dt><dd>{currentDocument.status}</dd></div><div><dt>Updated</dt><dd>{new Date(currentDocument.updated_at).toLocaleDateString()}</dd></div></dl><button onClick={() => setArea("Relationships")}>View document relationships</button></>}</article></section>}
+  {view === "memory" && <section className="memory-grid">{["Working", "Session", "Candidate", "Verified", "Policy"].map((tier, index) => <article key={tier}><span>0{index + 1}</span><h3>{tier}</h3><p>{tier === "Session" ? `${sessions.length} governed sessions` : tier === "Verified" ? `${evidence.length} reviewed items` : "Governed memory state"}</p><button onClick={() => setView(tier === "Session" ? "sessions" : "knowledge")}>Open {tier.toLowerCase()}</button></article>)}</section>}
+  {view === "sessions" && <section className="session-stream">{sessions.length ? sessions.map((item: SessionRecord) => { const latest = handovers.find((handover: HandoverRecord) => handover.session_id === item.id); return <article key={item.id}><div><p className="eyebrow">{item.status} · {item.current_phase ?? "No active phase"}</p><h3>{item.resume_key}</h3><p>{item.objective}</p></div><aside><strong>{handovers.filter((handover: HandoverRecord) => handover.session_id === item.id).length}</strong><span>handovers</span><button disabled={!latest} onClick={() => latest && downloadJson(`pbs-central-handover-${item.resume_key}.json`, latest)}>Download latest</button></aside></article>; }) : <EmptyState text="No sessions match this search." />}</section>}</section>; }
+function EmptyState({ text, cta, onAction }: { text: string; cta?: string; onAction?: () => void }) { return <div className="empty-state"><p>{text}</p>{cta && onAction && <button onClick={onAction}>{cta}</button>}</div>; }
+function FlowLedger({ approvals, jobs }: { approvals: Approval[]; jobs: Job[] }) { const outcome = jobs[0]?.result?.verification_status; return <ol className="flow-ledger"><li className="done">Briefing <span>ready</span></li><li className="done">Evidence <span>cited</span></li><li className={approvals.length ? "done" : ""}>Decision <span>{approvals.length ? "recorded" : "waiting"}</span></li><li className={approvals.some((item) => item.status === "approved") ? "done" : ""}>Approval <span>{approvals[0]?.status ?? "waiting"}</span></li><li className={outcome === "verified" ? "done" : ""}>Outcome <span>{String(outcome ?? "waiting")}</span></li></ol>; }
