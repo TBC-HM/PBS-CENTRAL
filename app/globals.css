@@ -365,6 +365,14 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 400; letter-spaci
   .session-stream article { grid-template-columns: 1fr; }
 }
 
+.registry-form { margin-top: 28px; padding: 28px; border: 1px solid #ddd8cc; background: #fff; display: grid; grid-template-columns: minmax(220px,.7fr) minmax(320px,1.3fr); gap: 32px; }
+.registry-form form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.registry-form label { display: grid; gap: 7px; font: 600 12px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.registry-form input,.registry-form select,.registry-form textarea { width: 100%; padding: 12px; border: 1px solid #cfc9bc; background: #fff; color: #102b33; font: 400 15px/1.4 var(--font-sans); text-transform: none; letter-spacing: 0; }
+.registry-form .wide,.registry-form button { grid-column: 1/-1; }
+.registry-form button { padding: 14px; border: 0; background: #102b33; color: #fff; cursor: pointer; }
+@media(max-width:760px){.registry-form{grid-template-columns:1fr;padding:20px}.registry-form form{grid-template-columns:1fr}.registry-form label,.registry-form button{grid-column:1}}
+
 @media (max-width: 520px) { .memory-grid, .category-grid, .company-tile-grid, .automation-card-grid, .project-tile-grid, .integration-grid { grid-template-columns: 1fr; } .contact-profile-head, .contact-quality { grid-template-columns: 1fr; display: grid; } .profile-link { justify-self: start; } }
 
 @media (prefers-reduced-motion: reduce) {
