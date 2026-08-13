@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbs-central.invalid/schemas/documentation-drift-record-v1.json",
+  "title": "PBS CENTRAL documentation drift result",
+  "type": "object",
+  "required": ["schema_version", "health", "records"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "health": { "enum": ["GREEN", "AMBER", "RED"] },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "area", "severity", "status", "expected", "actual", "evidence_ref", "message"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-f0-9]{24}$" },
+          "area": { "enum": ["github", "supabase", "vercel", "documentation"] },
+          "severity": { "enum": ["GREEN", "AMBER", "RED"] },
+          "status": { "enum": ["current", "drift", "blocked"] },
+          "expected": { "type": "object" },
+          "actual": { "type": "object" },
+          "evidence_ref": { "type": ["string", "null"] },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
