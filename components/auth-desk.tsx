@@ -31,7 +31,7 @@ export function AuthDesk() {
     try {
       const { error } = await getSupabaseBrowserClient().auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/workspace` }
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/workspace` }
       });
       if (error) throw error;
       setState("success");

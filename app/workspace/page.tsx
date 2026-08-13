@@ -1,34 +1,21 @@
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/components/sign-out-button";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export default async function WorkspacePage() {
   const supabase = await createSupabaseServerClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims?.sub) redirect("/");
 
-  if (claimsError || !claimsData?.claims?.sub) redirect("/");
+  const { data: workspaces, error } = await supabase.from("kos_workspaces").select("id,slug,name").order("name").limit(1);
+  if (error || !workspaces?.length) redirect("/");
+  const workspace = workspaces[0];
+  const [membership, evidence, approvals, jobs] = await Promise.all([
+    supabase.from("kos_workspace_members").select("role").eq("workspace_id", workspace.id).eq("user_id", claims.claims.sub).single(),
+    supabase.from("kos_knowledge_items").select("id,title,body,verification_status").eq("workspace_id", workspace.id).in("verification_status", ["verified", "reviewed"]).order("updated_at", { ascending: false }).limit(12),
+    supabase.from("kos_approvals").select("id,subject_id,action,status,rationale").eq("workspace_id", workspace.id).eq("subject_type", "knowledge_decision").order("created_at", { ascending: false }).limit(12),
+    supabase.from("kos_processing_jobs").select("id,resource_id,result").eq("workspace_id", workspace.id).eq("job_type", "slice_01_approved_action").order("created_at", { ascending: false }).limit(5)
+  ]);
 
-  const { data: workspaces, error } = await supabase.from("kos_workspaces").select("id, slug, name").order("name");
-
-  if (error) {
-    return <WorkspaceState eyebrow="Access check failed" title="Workspace unavailable." description="We could not verify your PBS Central membership. No workspace data was opened." />;
-  }
-
-  if (!workspaces?.length) {
-    return <WorkspaceState eyebrow="Authenticated · no membership" title="Access has not been granted." description="Your identity is valid, but you are not an active member of a PBS Central workspace." />;
-  }
-
-  return (
-    <main className="workspace-state">
-      <p className="eyebrow">Workspace verified</p>
-      <h1>{workspaces[0].name}</h1>
-      <p>The governed workspace boundary is active. The Phase 0 shell is being restored incrementally.</p>
-      <div className="workspace-meta"><span>Tenant</span><strong>{workspaces[0].slug}</strong></div>
-      <SignOutButton />
-    </main>
-  );
-}
-
-function WorkspaceState({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <main className="workspace-state"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p><SignOutButton /></main>;
+  return <WorkspaceShell workspace={workspace} role={String(membership.data?.role ?? "viewer")} evidence={evidence.data ?? []} approvals={approvals.data ?? []} jobs={jobs.data ?? []} />;
 }

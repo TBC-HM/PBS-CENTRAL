@@ -1,13 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase-config";
 
-let client: ReturnType<typeof createClient> | undefined;
+let client: ReturnType<typeof createBrowserClient> | undefined;
 
 export function getSupabaseBrowserClient() {
   const { url, publishableKey } = getSupabasePublicConfig();
 
-  client ??= createClient(url, publishableKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-  });
+  client ??= createBrowserClient(url, publishableKey);
   return client;
 }
