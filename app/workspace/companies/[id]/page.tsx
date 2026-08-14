@@ -1,25 +1,351 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { DocumentActions } from "@/components/document-actions";
 
-export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CompanyPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims?.sub) redirect("/");
-  const { data: company } = await supabase.from("kos_companies").select("id,workspace_id,name,legal_name,jurisdiction,registration_number,status,company_type,website,updated_at,source_metadata").eq("id", id).single();
+  const { data: company } = await supabase
+    .from("kos_companies")
+    .select(
+      "id,workspace_id,name,legal_name,jurisdiction,registration_number,status,company_type,website,updated_at,source_metadata",
+    )
+    .eq("id", id)
+    .single();
   if (!company) notFound();
-  const [{ data: contacts }, { data: aliases }, { data: documentLinks }, { data: relationshipsData }, { data: bankAccounts }] = await Promise.all([
-    supabase.from("kos_contacts").select("id,name,email,phone,role_title,status,contact_type,metadata").eq("workspace_id", company.workspace_id).eq("company_id", company.id).order("name"),
-    supabase.from("kos_company_aliases").select("alias").eq("workspace_id", company.workspace_id).eq("company_id", company.id),
-    supabase.from("kos_document_links").select("relationship,document:kos_documents(id,title,document_type,status,updated_at)").eq("workspace_id", company.workspace_id).eq("resource_type", "company").eq("resource_id", company.id).limit(50),
-    supabase.from("kos_company_relationships").select("id,source_company_id,target_company_id,relationship_type,external_party,ownership_percent,valid_from,valid_to,source:kos_companies!kos_company_relationships_source_company_id_fkey(id,name),target:kos_companies!kos_company_relationships_target_company_id_fkey(id,name)").eq("workspace_id", company.workspace_id).or(`source_company_id.eq.${company.id},target_company_id.eq.${company.id}`).limit(100),
-    supabase.from("kos_bank_accounts").select("id,bank_name,account_label,currency,iban_last4,status").eq("workspace_id", company.workspace_id).eq("company_id", company.id).order("bank_name")
+  const [
+    { data: contacts },
+    { data: aliases },
+    { data: documentLinks },
+    { data: relationshipsData },
+    { data: bankAccounts },
+  ] = await Promise.all([
+    supabase
+      .from("kos_contacts")
+      .select("id,name,email,phone,role_title,status,contact_type,metadata")
+      .eq("workspace_id", company.workspace_id)
+      .eq("company_id", company.id)
+      .order("name"),
+    supabase
+      .from("kos_company_aliases")
+      .select("alias")
+      .eq("workspace_id", company.workspace_id)
+      .eq("company_id", company.id),
+    supabase
+      .from("kos_document_links")
+      .select(
+        "relationship,document:kos_documents(id,title,document_type,status,updated_at)",
+      )
+      .eq("workspace_id", company.workspace_id)
+      .eq("resource_type", "company")
+      .eq("resource_id", company.id)
+      .limit(50),
+    supabase
+      .from("kos_company_relationships")
+      .select(
+        "id,source_company_id,target_company_id,relationship_type,external_party,ownership_percent,valid_from,valid_to,source:kos_companies!kos_company_relationships_source_company_id_fkey(id,name),target:kos_companies!kos_company_relationships_target_company_id_fkey(id,name)",
+      )
+      .eq("workspace_id", company.workspace_id)
+      .or(
+        `source_company_id.eq.${company.id},target_company_id.eq.${company.id}`,
+      )
+      .limit(100),
+    supabase
+      .from("kos_bank_accounts")
+      .select("id,bank_name,account_label,currency,iban_last4,status")
+      .eq("workspace_id", company.workspace_id)
+      .eq("company_id", company.id)
+      .order("bank_name"),
   ]);
   const relationships: any[] = relationshipsData ?? [];
-  const mainContacts = contacts?.filter((contact) => Boolean((contact.metadata as Record<string, unknown> | null)?.main_contact) || ["director", "owner", "legal", "tax_advisor"].includes(contact.contact_type)) ?? [];
-  const normalizedLinks = (documentLinks ?? []).map((link) => ({ ...link, document: Array.isArray(link.document) ? link.document[0] : link.document }));
-  const normalizedRelationships = (relationships ?? []).map((relationship) => ({ ...relationship, target: Array.isArray(relationship.target) ? relationship.target[0] : relationship.target }));
-  const legalDocuments = normalizedLinks.filter((link) => link.relationship === "legal" || /legal|incorporation|tax|license|registry/i.test(String(link.document?.document_type ?? "")));
-  return <main className="entity-page company-dossier"><nav><Link href="/workspace">← Workspace</Link><Link href="/workspace#organization">Company directory</Link><Link href={`/workspace/upload?company=${company.id}`}>Upload company document</Link><Link href="/workspace/documents">All company files</Link><Link href="/workspace/integrations">Accounts & apps</Link></nav><header><p className="eyebrow">Company operating dossier · {company.status}</p><h1>{company.name}</h1><p>{company.legal_name && company.legal_name !== company.name ? company.legal_name : company.company_type ?? "Company"}</p><div className="dossier-summary"><div><strong>{contacts?.length ?? 0}</strong><span>contacts</span></div><div><strong>{documentLinks?.length ?? 0}</strong><span>linked files</span></div><div><strong>{relationships?.length ?? 0}</strong><span>relationships</span></div><div><strong>{bankAccounts?.length ?? 0}</strong><span>bank accounts</span></div></div></header><section className="dossier-layout"><aside className="obligations-rail"><p className="eyebrow">Control file</p><a href="#identity">Legal identity</a><a href="#legal-documents">Legal documents</a><a href="#main-contacts">Main contacts</a><a href="#relationships">Ownership & advisers</a><a href="#source-folders">Source folders</a><a href="#banking">Banking</a><a href="#pending">Pending obligations</a></aside><div className="dossier-sections"><article id="identity"><h2>Legal identity</h2><dl><div><dt>Legal name</dt><dd>{company.legal_name ?? company.name}</dd></div><div><dt>Jurisdiction</dt><dd>{company.jurisdiction ?? "Not recorded"}</dd></div><div><dt>Registration</dt><dd>{company.registration_number ?? "Not recorded"}</dd></div><div><dt>Type</dt><dd>{company.company_type ?? "Not recorded"}</dd></div><div><dt>Aliases</dt><dd>{aliases?.map((item) => item.alias).join(", ") || "None"}</dd></div><div><dt>Website</dt><dd>{company.website ? <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer">{company.website}</a> : "Not recorded"}</dd></div><div><dt>Verified</dt><dd>{new Date(company.updated_at).toLocaleDateString()}</dd></div></dl></article><article id="legal-documents"><h2>Legal documents <span>{legalDocuments.length}</span></h2><div className="entity-page-list">{legalDocuments.length ? legalDocuments.map((link) => <div key={link.document?.id}><strong>{link.document?.title}</strong><span>{link.document?.document_type ?? link.relationship} · {link.document?.status}</span></div>) : <p>No legal document is linked yet. Uploading a file does not automatically classify it as legal.</p>}</div><Link className="entity-link" href="/workspace/upload">Upload legal document</Link></article><article id="main-contacts"><h2>Main contacts <span>{mainContacts.length || Math.min(contacts?.length ?? 0, 5)}</span></h2><div className="entity-page-list">{(mainContacts.length ? mainContacts : contacts?.slice(0, 5) ?? []).map((contact) => <Link key={contact.id} href={`/workspace/contacts/${contact.id}`}><strong>{contact.name}</strong><span>{contact.role_title ?? contact.contact_type} · {contact.email ?? contact.phone ?? "No channel"}</span></Link>)}</div></article><article id="relationships"><h2>Ownership & advisers <span>{relationships?.length ?? 0}</span></h2><div className="entity-page-list">{relationships?.length ? relationships.map((relationship) => {const outbound=relationship.source_company_id===company.id; const counterparty=outbound?relationship.target?.name:relationship.source?.name; return <div key={relationship.id}><strong>{outbound?relationship.relationship_type.replaceAll("_", " "):"parent company"}</strong><span>{counterparty ?? relationship.external_party ?? "Linked company"}{relationship.ownership_percent != null ? ` · ${relationship.ownership_percent}%` : ""}</span></div>}) : <p>No governed ownership, parent/subsidiary, tax adviser, lawyer, or asset relationship is recorded yet.</p>}</div></article><article id="source-folders"><h2>Source folders</h2><dl><div><dt>Imported folder</dt><dd>{String(company.source_metadata?.drive_folder??"Not recorded")}</dd></div><div><dt>Drive reference</dt><dd>{String(company.source_metadata?.linked_drive_folder??"Not connected")}</dd></div></dl><p>These are provenance references. PBS CENTRAL does not read files from the local Mac path.</p></article><article id="banking"><h2>Banking <span>{bankAccounts?.length ?? 0}</span></h2><div className="entity-page-list">{bankAccounts?.length ? bankAccounts.map((account) => <div key={account.id}><strong>{account.bank_name} · {account.account_label}</strong><span>{account.currency}{account.iban_last4 ? ` · •••• ${account.iban_last4}` : ""} · {account.status}</span></div>) : <p>No bank relationship is recorded.</p>}</div></article><article id="pending"><h2>Pending obligations</h2><p>The tenant-safe company task engine is the next checkpoint. The legacy task table is intentionally excluded because it cannot enforce workspace or company isolation.</p></article></div></section></main>;
+  const mainContacts =
+    contacts?.filter(
+      (contact) =>
+        Boolean(
+          (contact.metadata as Record<string, unknown> | null)?.main_contact,
+        ) ||
+        ["director", "owner", "legal", "tax_advisor"].includes(
+          contact.contact_type,
+        ),
+    ) ?? [];
+  const normalizedLinks = (documentLinks ?? []).map((link) => ({
+    ...link,
+    document: Array.isArray(link.document) ? link.document[0] : link.document,
+  }));
+  const normalizedRelationships = (relationships ?? []).map((relationship) => ({
+    ...relationship,
+    target: Array.isArray(relationship.target)
+      ? relationship.target[0]
+      : relationship.target,
+  }));
+  const legalDocuments = normalizedLinks.filter(
+    (link) =>
+      link.relationship === "legal" ||
+      /legal|incorporation|tax|license|registry/i.test(
+        String(link.document?.document_type ?? ""),
+      ),
+  );
+  return (
+    <main className="entity-page company-dossier">
+      <nav>
+        <Link href="/workspace">← Workspace</Link>
+        <Link href="/workspace#organization">Company directory</Link>
+        <Link href={`/workspace/upload?company=${company.id}`}>
+          Upload company document
+        </Link>
+        <Link href="/workspace/documents">All company files</Link>
+        <Link href="/workspace/integrations">Accounts & apps</Link>
+      </nav>
+      <header>
+        <p className="eyebrow">Company operating dossier · {company.status}</p>
+        <h1>{company.name}</h1>
+        <p>
+          {company.legal_name && company.legal_name !== company.name
+            ? company.legal_name
+            : (company.company_type ?? "Company")}
+        </p>
+        <div className="dossier-summary">
+          <div>
+            <strong>{contacts?.length ?? 0}</strong>
+            <span>contacts</span>
+          </div>
+          <div>
+            <strong>{documentLinks?.length ?? 0}</strong>
+            <span>linked files</span>
+          </div>
+          <div>
+            <strong>{relationships?.length ?? 0}</strong>
+            <span>relationships</span>
+          </div>
+          <div>
+            <strong>{bankAccounts?.length ?? 0}</strong>
+            <span>bank accounts</span>
+          </div>
+        </div>
+      </header>
+      <section className="dossier-layout">
+        <aside className="obligations-rail">
+          <p className="eyebrow">Control file</p>
+          <a href="#identity">Legal identity</a>
+          <a href="#legal-documents">Legal documents</a>
+          <a href="#main-contacts">Main contacts</a>
+          <a href="#relationships">Ownership & advisers</a>
+          <a href="#source-folders">Source folders</a>
+          <a href="#banking">Banking</a>
+          <a href="#pending">Pending obligations</a>
+        </aside>
+        <div className="dossier-sections">
+          <article id="identity">
+            <h2>Legal identity</h2>
+            <dl>
+              <div>
+                <dt>Legal name</dt>
+                <dd>{company.legal_name ?? company.name}</dd>
+              </div>
+              <div>
+                <dt>Jurisdiction</dt>
+                <dd>{company.jurisdiction ?? "Not recorded"}</dd>
+              </div>
+              <div>
+                <dt>Registration</dt>
+                <dd>{company.registration_number ?? "Not recorded"}</dd>
+              </div>
+              <div>
+                <dt>Type</dt>
+                <dd>{company.company_type ?? "Not recorded"}</dd>
+              </div>
+              <div>
+                <dt>Aliases</dt>
+                <dd>
+                  {aliases?.map((item) => item.alias).join(", ") || "None"}
+                </dd>
+              </div>
+              <div>
+                <dt>Website</dt>
+                <dd>
+                  {company.website ? (
+                    <a
+                      href={
+                        company.website.startsWith("http")
+                          ? company.website
+                          : `https://${company.website}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {company.website}
+                    </a>
+                  ) : (
+                    "Not recorded"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Verified</dt>
+                <dd>{new Date(company.updated_at).toLocaleDateString()}</dd>
+              </div>
+            </dl>
+          </article>
+          <article id="legal-documents">
+            <h2>
+              Legal documents <span>{legalDocuments.length}</span>
+            </h2>
+            <div className="entity-page-list">
+              {legalDocuments.length ? (
+                legalDocuments.map((link) => (
+                  <div key={link.document?.id}>
+                    <strong>{link.document?.title}</strong>
+                    <span>
+                      {link.document?.document_type ?? link.relationship} ·{" "}
+                      {link.document?.status}
+                    </span>
+                    {link.document?.id && (
+                      <DocumentActions kind="registry" id={link.document.id} />
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p>
+                  No legal document is linked yet. Uploading a file does not
+                  automatically classify it as legal.
+                </p>
+              )}
+            </div>
+            <Link className="entity-link" href="/workspace/upload">
+              Upload legal document
+            </Link>
+          </article>
+          <article id="main-contacts">
+            <h2>
+              Main contacts{" "}
+              <span>
+                {mainContacts.length || Math.min(contacts?.length ?? 0, 5)}
+              </span>
+            </h2>
+            <div className="entity-page-list">
+              {(mainContacts.length
+                ? mainContacts
+                : (contacts?.slice(0, 5) ?? [])
+              ).map((contact) => (
+                <Link
+                  key={contact.id}
+                  href={`/workspace/contacts/${contact.id}`}
+                >
+                  <strong>{contact.name}</strong>
+                  <span>
+                    {contact.role_title ?? contact.contact_type} ·{" "}
+                    {contact.email ?? contact.phone ?? "No channel"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </article>
+          <article id="relationships">
+            <h2>
+              Ownership & advisers <span>{relationships?.length ?? 0}</span>
+            </h2>
+            <div className="entity-page-list">
+              {relationships?.length ? (
+                relationships.map((relationship) => {
+                  const outbound =
+                    relationship.source_company_id === company.id;
+                  const counterparty = outbound
+                    ? relationship.target?.name
+                    : relationship.source?.name;
+                  return (
+                    <div key={relationship.id}>
+                      <strong>
+                        {outbound
+                          ? relationship.relationship_type.replaceAll("_", " ")
+                          : "parent company"}
+                      </strong>
+                      <span>
+                        {counterparty ??
+                          relationship.external_party ??
+                          "Linked company"}
+                        {relationship.ownership_percent != null
+                          ? ` · ${relationship.ownership_percent}%`
+                          : ""}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p>
+                  No governed ownership, parent/subsidiary, tax adviser, lawyer,
+                  or asset relationship is recorded yet.
+                </p>
+              )}
+            </div>
+          </article>
+          <article id="source-folders">
+            <h2>Source folders</h2>
+            <dl>
+              <div>
+                <dt>Imported folder</dt>
+                <dd>
+                  {String(
+                    company.source_metadata?.drive_folder ?? "Not recorded",
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Drive reference</dt>
+                <dd>
+                  {String(
+                    company.source_metadata?.linked_drive_folder ??
+                      "Not connected",
+                  )}
+                </dd>
+              </div>
+            </dl>
+            <p>
+              These are provenance references. PBS CENTRAL does not read files
+              from the local Mac path.
+            </p>
+          </article>
+          <article id="banking">
+            <h2>
+              Banking <span>{bankAccounts?.length ?? 0}</span>
+            </h2>
+            <div className="entity-page-list">
+              {bankAccounts?.length ? (
+                bankAccounts.map((account) => (
+                  <div key={account.id}>
+                    <strong>
+                      {account.bank_name} · {account.account_label}
+                    </strong>
+                    <span>
+                      {account.currency}
+                      {account.iban_last4
+                        ? ` · •••• ${account.iban_last4}`
+                        : ""}{" "}
+                      · {account.status}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p>No bank relationship is recorded.</p>
+              )}
+            </div>
+          </article>
+          <article id="pending">
+            <h2>Pending obligations</h2>
+            <p>
+              The tenant-safe company task engine is the next checkpoint. The
+              legacy task table is intentionally excluded because it cannot
+              enforce workspace or company isolation.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  );
 }

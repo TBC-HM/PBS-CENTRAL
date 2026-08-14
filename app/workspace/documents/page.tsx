@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DocumentLibrary } from "@/components/document-library";
+import { DocumentActions } from "@/components/document-actions";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import {
-  createKnowledgeEntry,
-  resolveExtractionReview,
-} from "./actions";
+import { createKnowledgeEntry, resolveExtractionReview } from "./actions";
 
 export default async function DocumentsPage({
   searchParams,
@@ -107,7 +105,10 @@ export default async function DocumentsPage({
         </p>
       )}
 
-      <section className="knowledge-containers" aria-label="Document containers">
+      <section
+        className="knowledge-containers"
+        aria-label="Document containers"
+      >
         <article className="knowledge-container registry-container">
           <div className="container-index" aria-hidden>
             R
@@ -164,13 +165,11 @@ export default async function DocumentsPage({
           </div>
           <div className="container-actions">
             <details className="knowledge-create">
-              <summary className="container-primary">Create knowledge entry</summary>
+              <summary className="container-primary">
+                Create knowledge entry
+              </summary>
               <form action={createKnowledgeEntry}>
-                <input
-                  type="hidden"
-                  name="workspace_id"
-                  value={workspace.id}
-                />
+                <input type="hidden" name="workspace_id" value={workspace.id} />
                 <label>
                   Entry type
                   <select name="kind" defaultValue="analysis">
@@ -214,10 +213,7 @@ export default async function DocumentsPage({
                 <button>Create unverified knowledge</button>
               </form>
             </details>
-            <Link
-              className="container-secondary"
-              href="/workspace/knowledge"
-            >
+            <Link className="container-secondary" href="/workspace/knowledge">
               Browse Knowledge Base
             </Link>
           </div>
@@ -231,19 +227,19 @@ export default async function DocumentsPage({
         </div>
         <div>
           {knowledge?.map((item) => (
-            <Link
-              key={item.id}
-              href={`/workspace/knowledge?selected=${item.id}`}
-            >
-              <span>
-                <strong>{item.title}</strong>
-                <small>
-                  {item.kind.replaceAll("_", " ")} ·{" "}
-                  {item.verification_status}
-                </small>
-              </span>
-              <em>Open →</em>
-            </Link>
+            <div className="knowledge-recent-row" key={item.id}>
+              <Link href={`/workspace/knowledge?selected=${item.id}`}>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.kind.replaceAll("_", " ")} ·{" "}
+                    {item.verification_status}
+                  </small>
+                </span>
+                <em>Open →</em>
+              </Link>
+              <DocumentActions kind="knowledge" id={item.id} />
+            </div>
           ))}
         </div>
       </section>
@@ -267,7 +263,8 @@ export default async function DocumentsPage({
                     {review.risk_class} · {review.field_path}
                   </strong>
                   <span>
-                    Confidence {review.confidence} · threshold {review.threshold}
+                    Confidence {review.confidence} · threshold{" "}
+                    {review.threshold}
                   </span>
                   <pre className="markdown-preview">
                     {JSON.stringify(review.predicted_value, null, 2)}

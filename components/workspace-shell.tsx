@@ -4,156 +4,1628 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { SignOutButton } from "@/components/sign-out-button";
+import { DocumentActions } from "@/components/document-actions";
 
-type Evidence = { id: string; title: string; body: string; verification_status: string };
-type Approval = { id: string; subject_id: string; action: string; status: string; rationale: string | null };
-type Job = { id: string; resource_id: string; result: Record<string, unknown> | null };
-type DocumentRecord = { id: string; title: string; document_type: string | null; status: string; updated_at: string };
-type SessionRecord = { id: string; resume_key: string; objective: string; status: string; current_phase: string | null; updated_at: string };
-type HandoverRecord = { id: string; session_id: string; sequence: number; summary: string; completed: unknown; risks: unknown; next_actions: unknown; created_at: string };
-type SourceRecord = { knowledge_id: string; source_type: string; source_id: string; locator: Record<string, unknown>; quote: string | null };
-type CompanyRecord = { id: string; name: string; legal_name: string | null; jurisdiction: string | null; registration_number: string | null; status: string; source_code: string | null; company_type: string | null; website: string | null; updated_at: string };
-type ContactRecord = { id: string; company_id: string | null; source_code: string | null; name: string; email: string | null; phone: string | null; role_title: string | null; contact_type: string; company_name: string | null; status: string; metadata: Record<string, unknown>; updated_at: string };
+type Evidence = {
+  id: string;
+  title: string;
+  body: string;
+  verification_status: string;
+};
+type Approval = {
+  id: string;
+  subject_id: string;
+  action: string;
+  status: string;
+  rationale: string | null;
+};
+type Job = {
+  id: string;
+  resource_id: string;
+  result: Record<string, unknown> | null;
+};
+type DocumentRecord = {
+  id: string;
+  title: string;
+  document_type: string | null;
+  status: string;
+  updated_at: string;
+};
+type SessionRecord = {
+  id: string;
+  resume_key: string;
+  objective: string;
+  status: string;
+  current_phase: string | null;
+  updated_at: string;
+};
+type HandoverRecord = {
+  id: string;
+  session_id: string;
+  sequence: number;
+  summary: string;
+  completed: unknown;
+  risks: unknown;
+  next_actions: unknown;
+  created_at: string;
+};
+type SourceRecord = {
+  knowledge_id: string;
+  source_type: string;
+  source_id: string;
+  locator: Record<string, unknown>;
+  quote: string | null;
+};
+type CompanyRecord = {
+  id: string;
+  name: string;
+  legal_name: string | null;
+  jurisdiction: string | null;
+  registration_number: string | null;
+  status: string;
+  source_code: string | null;
+  company_type: string | null;
+  website: string | null;
+  updated_at: string;
+};
+type ContactRecord = {
+  id: string;
+  company_id: string | null;
+  source_code: string | null;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role_title: string | null;
+  contact_type: string;
+  company_name: string | null;
+  status: string;
+  metadata: Record<string, unknown>;
+  updated_at: string;
+};
 type AliasRecord = { id: string; company_id: string; alias: string };
-type CompanyRelationship = { id: string; source_company_id: string; target_company_id: string | null; relationship_type: string; external_party: string | null; ownership_percent: number | null; valid_from: string | null; valid_to: string | null };
+type CompanyRelationship = {
+  id: string;
+  source_company_id: string;
+  target_company_id: string | null;
+  relationship_type: string;
+  external_party: string | null;
+  ownership_percent: number | null;
+  valid_from: string | null;
+  valid_to: string | null;
+};
 type DecisionResult = { decision_id: string; approval_id: string };
 type ActionResult = { job_id: string; replayed: boolean };
 type KnowledgeView = "knowledge" | "documents" | "memory" | "sessions";
 
-const areas = ["Home", "Inbox", "Work", "Organization", "Relationships", "Knowledge", "Automations", "Insights"];
+const areas = [
+  "Home",
+  "Inbox",
+  "Work",
+  "Organization",
+  "Relationships",
+  "Knowledge",
+  "Automations",
+  "Insights",
+];
 
-export function WorkspaceShell({ workspace, role, evidence, approvals, jobs, documents, sessions, handovers, sources, companies, contacts, aliases, companyRelationships }: {
-  workspace: { id: string; name: string; slug: string }; role: string; evidence: Evidence[]; approvals: Approval[]; jobs: Job[];
-  documents: DocumentRecord[]; sessions: SessionRecord[]; handovers: HandoverRecord[]; sources: SourceRecord[];
-  companies: CompanyRecord[]; contacts: ContactRecord[]; aliases: AliasRecord[]; companyRelationships: CompanyRelationship[];
+export function WorkspaceShell({
+  workspace,
+  role,
+  evidence,
+  approvals,
+  jobs,
+  documents,
+  sessions,
+  handovers,
+  sources,
+  companies,
+  contacts,
+  aliases,
+  companyRelationships,
+}: {
+  workspace: { id: string; name: string; slug: string };
+  role: string;
+  evidence: Evidence[];
+  approvals: Approval[];
+  jobs: Job[];
+  documents: DocumentRecord[];
+  sessions: SessionRecord[];
+  handovers: HandoverRecord[];
+  sources: SourceRecord[];
+  companies: CompanyRecord[];
+  contacts: ContactRecord[];
+  aliases: AliasRecord[];
+  companyRelationships: CompanyRelationship[];
 }) {
   const [area, setArea] = useState("Home");
   const [view, setView] = useState<KnowledgeView>("knowledge");
   const [search, setSearch] = useState("");
-  const [selectedEvidence, setSelectedEvidence] = useState(evidence[0]?.id ?? "");
-  const [selectedDocument, setSelectedDocument] = useState(documents[0]?.id ?? "");
-  const [question, setQuestion] = useState("What decision does this verified evidence support today?");
-  const [decision, setDecision] = useState("Proceed with the evidence-backed operating response.");
-  const [action, setAction] = useState("Create and verify the approved operating follow-up.");
+  const [selectedEvidence, setSelectedEvidence] = useState(
+    evidence[0]?.id ?? "",
+  );
+  const [selectedDocument, setSelectedDocument] = useState(
+    documents[0]?.id ?? "",
+  );
+  const [question, setQuestion] = useState(
+    "What decision does this verified evidence support today?",
+  );
+  const [decision, setDecision] = useState(
+    "Proceed with the evidence-backed operating response.",
+  );
+  const [action, setAction] = useState(
+    "Create and verify the approved operating follow-up.",
+  );
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [directorySearch, setDirectorySearch] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState(companies[0]?.id ?? "");
-  const [selectedContact, setSelectedContact] = useState(contacts.find((item) => item.name !== "(unnamed)")?.id ?? contacts[0]?.id ?? "");
+  const [selectedCompany, setSelectedCompany] = useState(
+    companies[0]?.id ?? "",
+  );
+  const [selectedContact, setSelectedContact] = useState(
+    contacts.find((item) => item.name !== "(unnamed)")?.id ??
+      contacts[0]?.id ??
+      "",
+  );
   const [localApprovals, setLocalApprovals] = useState(approvals);
   const [localJobs, setLocalJobs] = useState(jobs);
-  useEffect(() => { const target=window.location.hash.slice(1); const match=areas.find(item=>item.toLowerCase()===target.toLowerCase()); if(match)setArea(match); }, []);
-  const selected = useMemo(() => evidence.find((item) => item.id === selectedEvidence), [evidence, selectedEvidence]);
-  const currentDocument = documents.find((item) => item.id === selectedDocument);
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    const match = areas.find(
+      (item) => item.toLowerCase() === target.toLowerCase(),
+    );
+    if (match) setArea(match);
+  }, []);
+  const selected = useMemo(
+    () => evidence.find((item) => item.id === selectedEvidence),
+    [evidence, selectedEvidence],
+  );
+  const currentDocument = documents.find(
+    (item) => item.id === selectedDocument,
+  );
   const pending = localApprovals.find((item) => item.status === "pending");
   const approved = localApprovals.find((item) => item.status === "approved");
   const activeJob = localJobs[0];
   const canApprove = role === "owner" || role === "admin";
   const needle = search.trim().toLowerCase();
-  const matchingEvidence = evidence.filter((item) => !needle || `${item.title} ${item.body}`.toLowerCase().includes(needle));
-  const matchingDocuments = documents.filter((item) => !needle || `${item.title} ${item.document_type ?? ""}`.toLowerCase().includes(needle));
-  const matchingSessions = sessions.filter((item) => !needle || `${item.resume_key} ${item.objective}`.toLowerCase().includes(needle));
-  const selectedSources = sources.filter((item) => item.knowledge_id === selectedEvidence);
+  const matchingEvidence = evidence.filter(
+    (item) =>
+      !needle || `${item.title} ${item.body}`.toLowerCase().includes(needle),
+  );
+  const matchingDocuments = documents.filter(
+    (item) =>
+      !needle ||
+      `${item.title} ${item.document_type ?? ""}`
+        .toLowerCase()
+        .includes(needle),
+  );
+  const matchingSessions = sessions.filter(
+    (item) =>
+      !needle ||
+      `${item.resume_key} ${item.objective}`.toLowerCase().includes(needle),
+  );
+  const selectedSources = sources.filter(
+    (item) => item.knowledge_id === selectedEvidence,
+  );
   const directoryNeedle = directorySearch.trim().toLowerCase();
-  const matchingCompanies = companies.filter((item) => !directoryNeedle || `${item.name} ${item.legal_name ?? ""} ${item.company_type ?? ""} ${item.jurisdiction ?? ""}`.toLowerCase().includes(directoryNeedle));
-  const matchingContacts = contacts.filter((item) => !directoryNeedle || `${item.name} ${item.email ?? ""} ${item.role_title ?? ""} ${item.company_name ?? ""}`.toLowerCase().includes(directoryNeedle));
+  const matchingCompanies = companies.filter(
+    (item) =>
+      !directoryNeedle ||
+      `${item.name} ${item.legal_name ?? ""} ${item.company_type ?? ""} ${item.jurisdiction ?? ""}`
+        .toLowerCase()
+        .includes(directoryNeedle),
+  );
+  const matchingContacts = contacts.filter(
+    (item) =>
+      !directoryNeedle ||
+      `${item.name} ${item.email ?? ""} ${item.role_title ?? ""} ${item.company_name ?? ""}`
+        .toLowerCase()
+        .includes(directoryNeedle),
+  );
   const company = companies.find((item) => item.id === selectedCompany);
   const contact = contacts.find((item) => item.id === selectedContact);
 
-  function openKnowledge(nextView: KnowledgeView, nextSearch = "") { setView(nextView); setSearch(nextSearch); setArea("Knowledge"); }
-  async function mutate(operation: () => Promise<void>) { setBusy(true); setMessage(""); try { await operation(); } catch (error) { setMessage(error instanceof Error ? error.message : "The governed transition could not be completed."); } finally { setBusy(false); } }
-  async function recordDecision(event: FormEvent) { event.preventDefault(); if (!selected) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_record_decision", { target_workspace: workspace.id, evidence_id: selected.id, decision_title: `Decision · ${selected.title}`, decision_body: `${question}\n\n${decision}`, requested_action: action }); if (error) throw error; const created = data?.[0] as DecisionResult | undefined; if (created) setLocalApprovals((items) => [{ id: created.approval_id, subject_id: created.decision_id, action, status: "pending", rationale: null }, ...items]); setMessage("Decision recorded with its citation. Approval is waiting in Inbox."); setArea("Inbox"); }); }
-  async function decideApproval(approve: boolean) { if (!pending) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_decide_approval", { target_workspace: workspace.id, target_approval: pending.id, approve, rationale_value: approve ? "Approved from the governed review." : "Rejected from the governed review." }); if (error) throw error; setLocalApprovals((items) => items.map((item) => item.id === pending.id ? { ...item, ...(data as Partial<Approval>) } : item)); setMessage(approve ? "Approval granted. The action is eligible to run." : "Approval rejected. The action remains blocked."); setArea("Work"); }); }
-  async function executeAction() { if (!approved) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_execute_action", { target_workspace: workspace.id, target_approval: approved.id, idempotency_key_value: `slice-01-${approved.id}` }); if (error) throw error; const created = data?.[0] as ActionResult | undefined; if (created) setLocalJobs((items) => [{ id: created.job_id, resource_id: approved.subject_id, result: { verification_status: "awaiting_evidence" } }, ...items.filter((item) => item.id !== created.job_id)]); setMessage(created?.replayed ? "The original action result was reopened." : "Approved action executed once. Verify its outcome with evidence."); setArea("Insights"); }); }
-  async function verifyOutcome() { if (!activeJob || !selected) return; await mutate(async () => { const { data, error } = await (getSupabaseBrowserClient() as any).rpc("kos_slice_verify_outcome", { target_workspace: workspace.id, target_job: activeJob.id, evidence_id: selected.id, outcome_summary: `Verified against ${selected.title}.` }); if (error) throw error; setLocalJobs((items) => items.map((item) => item.id === activeJob.id ? { ...item, result: data.result as Record<string, unknown> } : item)); setMessage("Outcome verified with cited evidence. The flow is ready for handover."); setArea("Automations"); }); }
-  function downloadJson(filename: string, payload: unknown) { const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); }
-  function downloadHandover() { downloadJson(`pbs-central-slice-01-handover-${workspace.slug}.json`, { objective: "Complete Production Slice 01 governed operating loop", workspace: workspace.slug, evidence: selected ?? null, approval: localApprovals[0] ?? null, action: activeJob ?? null, outcome: activeJob?.result ?? null, generated_at: new Date().toISOString() }); }
+  function openKnowledge(nextView: KnowledgeView, nextSearch = "") {
+    setView(nextView);
+    setSearch(nextSearch);
+    setArea("Knowledge");
+  }
+  async function mutate(operation: () => Promise<void>) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await operation();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The governed transition could not be completed.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function recordDecision(event: FormEvent) {
+    event.preventDefault();
+    if (!selected) return;
+    await mutate(async () => {
+      const { data, error } = await (getSupabaseBrowserClient() as any).rpc(
+        "kos_slice_record_decision",
+        {
+          target_workspace: workspace.id,
+          evidence_id: selected.id,
+          decision_title: `Decision · ${selected.title}`,
+          decision_body: `${question}\n\n${decision}`,
+          requested_action: action,
+        },
+      );
+      if (error) throw error;
+      const created = data?.[0] as DecisionResult | undefined;
+      if (created)
+        setLocalApprovals((items) => [
+          {
+            id: created.approval_id,
+            subject_id: created.decision_id,
+            action,
+            status: "pending",
+            rationale: null,
+          },
+          ...items,
+        ]);
+      setMessage(
+        "Decision recorded with its citation. Approval is waiting in Inbox.",
+      );
+      setArea("Inbox");
+    });
+  }
+  async function decideApproval(approve: boolean) {
+    if (!pending) return;
+    await mutate(async () => {
+      const { data, error } = await (getSupabaseBrowserClient() as any).rpc(
+        "kos_slice_decide_approval",
+        {
+          target_workspace: workspace.id,
+          target_approval: pending.id,
+          approve,
+          rationale_value: approve
+            ? "Approved from the governed review."
+            : "Rejected from the governed review.",
+        },
+      );
+      if (error) throw error;
+      setLocalApprovals((items) =>
+        items.map((item) =>
+          item.id === pending.id
+            ? { ...item, ...(data as Partial<Approval>) }
+            : item,
+        ),
+      );
+      setMessage(
+        approve
+          ? "Approval granted. The action is eligible to run."
+          : "Approval rejected. The action remains blocked.",
+      );
+      setArea("Work");
+    });
+  }
+  async function executeAction() {
+    if (!approved) return;
+    await mutate(async () => {
+      const { data, error } = await (getSupabaseBrowserClient() as any).rpc(
+        "kos_slice_execute_action",
+        {
+          target_workspace: workspace.id,
+          target_approval: approved.id,
+          idempotency_key_value: `slice-01-${approved.id}`,
+        },
+      );
+      if (error) throw error;
+      const created = data?.[0] as ActionResult | undefined;
+      if (created)
+        setLocalJobs((items) => [
+          {
+            id: created.job_id,
+            resource_id: approved.subject_id,
+            result: { verification_status: "awaiting_evidence" },
+          },
+          ...items.filter((item) => item.id !== created.job_id),
+        ]);
+      setMessage(
+        created?.replayed
+          ? "The original action result was reopened."
+          : "Approved action executed once. Verify its outcome with evidence.",
+      );
+      setArea("Insights");
+    });
+  }
+  async function verifyOutcome() {
+    if (!activeJob || !selected) return;
+    await mutate(async () => {
+      const { data, error } = await (getSupabaseBrowserClient() as any).rpc(
+        "kos_slice_verify_outcome",
+        {
+          target_workspace: workspace.id,
+          target_job: activeJob.id,
+          evidence_id: selected.id,
+          outcome_summary: `Verified against ${selected.title}.`,
+        },
+      );
+      if (error) throw error;
+      setLocalJobs((items) =>
+        items.map((item) =>
+          item.id === activeJob.id
+            ? { ...item, result: data.result as Record<string, unknown> }
+            : item,
+        ),
+      );
+      setMessage(
+        "Outcome verified with cited evidence. The flow is ready for handover.",
+      );
+      setArea("Automations");
+    });
+  }
+  function downloadJson(filename: string, payload: unknown) {
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  function downloadHandover() {
+    downloadJson(`pbs-central-slice-01-handover-${workspace.slug}.json`, {
+      objective: "Complete Production Slice 01 governed operating loop",
+      workspace: workspace.slug,
+      evidence: selected ?? null,
+      approval: localApprovals[0] ?? null,
+      action: activeJob ?? null,
+      outcome: activeJob?.result ?? null,
+      generated_at: new Date().toISOString(),
+    });
+  }
 
-  return <main className="app-shell"><aside className="app-sidebar"><div className="brand-lockup app-brand"><span>PBS</span><strong>CENTRAL</strong></div><nav aria-label="Primary workspace">{areas.map((name, index) => <button key={name} className={area === name ? "active" : ""} onClick={() => setArea(name)}><span>{String(index + 1).padStart(2, "0")}</span>{name}</button>)}</nav><div className="sidebar-foot"><small>{workspace.name}<br />{role}</small><SignOutButton /></div></aside>
-    <section className="app-content"><header className="app-header"><div><p className="eyebrow">{area} · PBS Central</p><h1>{area === "Home" ? "Morning briefing" : area}</h1></div><div className="flow-meter"><span>{documents.length} docs</span><span>{evidence.length} knowledge</span><span>{sessions.length} sessions</span><span>{handovers.length} handovers</span></div></header>{message && <div className="app-notice" role="status">{message}</div>}
-      {area === "Home" && <section className="briefing-grid"><article className="briefing-lead"><p className="eyebrow">Owner workspace</p><h2>Your operating memory is ready to use.</h2><p>Open cited knowledge, add source files, manage companies, or run governed workflows.</p><div className="button-row"><button onClick={() => openKnowledge("knowledge")}>Open cited evidence</button><Link className="entity-link secondary-link" href="/workspace/documents">Browse documents</Link><button className="secondary" onClick={() => openKnowledge("sessions")}>Open session memory</button><Link className="entity-link" href="/workspace/upload">Upload files</Link><button className="secondary" onClick={() => setArea("Organization")}>Open companies</button><Link className="entity-link secondary-link" href="/workspace/automations">Run automations</Link></div></article><FlowLedger approvals={localApprovals} jobs={localJobs} /></section>}
-      {area === "Knowledge" && <><div className="button-row organization-actions"><Link className="entity-link" href="/workspace/knowledge">Open governed retrieval & review</Link><Link className="entity-link secondary-link" href="/workspace/documents">Open document library</Link></div><KnowledgeHub view={view} setView={setView} search={search} setSearch={setSearch} evidence={matchingEvidence} selected={selected} selectedEvidence={selectedEvidence} setSelectedEvidence={setSelectedEvidence} sources={selectedSources} documents={matchingDocuments} currentDocument={currentDocument} selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument} sessions={matchingSessions} handovers={handovers} busy={busy} question={question} setQuestion={setQuestion} decision={decision} setDecision={setDecision} action={action} setAction={setAction} recordDecision={recordDecision} setArea={setArea} downloadJson={downloadJson} /></>}
-      {area === "Inbox" && <section className="approval-card"><p className="eyebrow">Approval inbox</p>{pending ? <><h2>{pending.action}</h2><p>Requested from a recorded, cited decision. Owner/admin authority is required.</p><div className="button-row"><button disabled={busy || !canApprove} onClick={() => decideApproval(true)}>Approve action</button><button className="secondary" disabled={busy || !canApprove} onClick={() => decideApproval(false)}>Reject</button></div></> : <EmptyState text="No approval is waiting. Open Knowledge to record a cited decision." cta="Open Knowledge" onAction={() => openKnowledge("knowledge")} />}</section>}
-      {area === "Work" && <section className="approval-card"><p className="eyebrow">Work control</p><h2>Projects, tasks, calendar, travel and approved execution.</h2><p>Work is where intentions become scheduled commitments, assigned tasks, approvals and verified outcomes.</p><div className="button-row"><Link className="entity-link" href="/workspace/work">Open Work calendar</Link><Link className="entity-link secondary-link" href="/workspace/projects">Open app-development projects</Link><Link className="entity-link secondary-link" href="/workspace/goals">Goals & intentions</Link>{approved ? <button disabled={busy} onClick={executeAction}>Execute approved action</button> : <button className="secondary" onClick={() => setArea("Inbox")}>Review Inbox</button>}</div><p className="permission-note">Calendar and travel are the next Work controls; they will reuse the same company, project and asset records rather than create another directory.</p></section>}
-      {area === "Insights" && <section className="approval-card"><p className="eyebrow">Verified outcome</p>{activeJob ? <><h2>{activeJob.result?.verification_status === "verified" ? "Outcome verified" : "Verification required"}</h2><p>{String(activeJob.result?.summary ?? "Select cited knowledge, then verify the completed action.")}</p><button disabled={busy || activeJob.result?.verification_status === "verified" || !selected} onClick={verifyOutcome}>Verify outcome with citation</button></> : <EmptyState text="No executed action is awaiting verification." cta="Open Work" onAction={() => setArea("Work")} />}</section>}
-      {area === "Automations" && <section className="approval-card"><p className="eyebrow">Automation control room</p><h2>Define, run and inspect governed workflows.</h2><p>The full control room uses the live workflow registry and idempotent run queue. Structured handover remains available after a verified outcome.</p><div className="button-row"><Link className="entity-link" href="/workspace/automations">Open automation control room</Link><button disabled={activeJob?.result?.verification_status !== "verified"} onClick={downloadHandover}>Download structured handover</button></div></section>}
-      {area === "Organization" && <><div className="button-row organization-actions"><Link className="entity-link" href="/workspace/integrations">Accounts & apps</Link><Link className="entity-link secondary-link" href="/workspace/assets">Assets</Link><Link className="entity-link secondary-link" href="/workspace/goals">Goals & intentions</Link><Link className="entity-link secondary-link" href="/workspace/projects">App-development projects</Link></div><CompanyTileDirectory companies={matchingCompanies} contacts={contacts} search={directorySearch} setSearch={setDirectorySearch} /></>}
-      {area === "Relationships" && <ContactDirectory contacts={matchingContacts} companies={companies} search={directorySearch} setSearch={setDirectorySearch} selected={selectedContact} setSelected={setSelectedContact} setSelectedCompany={setSelectedCompany} setArea={setArea} openKnowledge={openKnowledge} />}
-    </section></main>;
+  return (
+    <main className="app-shell">
+      <aside className="app-sidebar">
+        <div className="brand-lockup app-brand">
+          <span>PBS</span>
+          <strong>CENTRAL</strong>
+        </div>
+        <nav aria-label="Primary workspace">
+          {areas.map((name, index) => (
+            <button
+              key={name}
+              className={area === name ? "active" : ""}
+              onClick={() => setArea(name)}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {name}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-foot">
+          <small>
+            {workspace.name}
+            <br />
+            {role}
+          </small>
+          <SignOutButton />
+        </div>
+      </aside>
+      <section className="app-content">
+        <header className="app-header">
+          <div>
+            <p className="eyebrow">{area} · PBS Central</p>
+            <h1>{area === "Home" ? "Morning briefing" : area}</h1>
+          </div>
+          <div className="flow-meter">
+            <span>{documents.length} docs</span>
+            <span>{evidence.length} knowledge</span>
+            <span>{sessions.length} sessions</span>
+            <span>{handovers.length} handovers</span>
+          </div>
+        </header>
+        {message && (
+          <div className="app-notice" role="status">
+            {message}
+          </div>
+        )}
+        {area === "Home" && (
+          <section className="briefing-grid">
+            <article className="briefing-lead">
+              <p className="eyebrow">Owner workspace</p>
+              <h2>Your operating memory is ready to use.</h2>
+              <p>
+                Open cited knowledge, add source files, manage companies, or run
+                governed workflows.
+              </p>
+              <div className="button-row">
+                <button onClick={() => openKnowledge("knowledge")}>
+                  Open cited evidence
+                </button>
+                <Link
+                  className="entity-link secondary-link"
+                  href="/workspace/documents"
+                >
+                  Browse documents
+                </Link>
+                <button
+                  className="secondary"
+                  onClick={() => openKnowledge("sessions")}
+                >
+                  Open session memory
+                </button>
+                <Link className="entity-link" href="/workspace/upload">
+                  Upload files
+                </Link>
+                <button
+                  className="secondary"
+                  onClick={() => setArea("Organization")}
+                >
+                  Open companies
+                </button>
+                <Link
+                  className="entity-link secondary-link"
+                  href="/workspace/automations"
+                >
+                  Run automations
+                </Link>
+              </div>
+            </article>
+            <FlowLedger approvals={localApprovals} jobs={localJobs} />
+          </section>
+        )}
+        {area === "Knowledge" && (
+          <>
+            <div className="button-row organization-actions">
+              <Link className="entity-link" href="/workspace/knowledge">
+                Open governed retrieval & review
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/documents"
+              >
+                Open document library
+              </Link>
+            </div>
+            <KnowledgeHub
+              view={view}
+              setView={setView}
+              search={search}
+              setSearch={setSearch}
+              evidence={matchingEvidence}
+              selected={selected}
+              selectedEvidence={selectedEvidence}
+              setSelectedEvidence={setSelectedEvidence}
+              sources={selectedSources}
+              documents={matchingDocuments}
+              currentDocument={currentDocument}
+              selectedDocument={selectedDocument}
+              setSelectedDocument={setSelectedDocument}
+              sessions={matchingSessions}
+              handovers={handovers}
+              busy={busy}
+              question={question}
+              setQuestion={setQuestion}
+              decision={decision}
+              setDecision={setDecision}
+              action={action}
+              setAction={setAction}
+              recordDecision={recordDecision}
+              setArea={setArea}
+              downloadJson={downloadJson}
+            />
+          </>
+        )}
+        {area === "Inbox" && (
+          <section className="approval-card">
+            <p className="eyebrow">Approval inbox</p>
+            {pending ? (
+              <>
+                <h2>{pending.action}</h2>
+                <p>
+                  Requested from a recorded, cited decision. Owner/admin
+                  authority is required.
+                </p>
+                <div className="button-row">
+                  <button
+                    disabled={busy || !canApprove}
+                    onClick={() => decideApproval(true)}
+                  >
+                    Approve action
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={busy || !canApprove}
+                    onClick={() => decideApproval(false)}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                text="No approval is waiting. Open Knowledge to record a cited decision."
+                cta="Open Knowledge"
+                onAction={() => openKnowledge("knowledge")}
+              />
+            )}
+          </section>
+        )}
+        {area === "Work" && (
+          <section className="approval-card">
+            <p className="eyebrow">Work control</p>
+            <h2>Projects, tasks, calendar, travel and approved execution.</h2>
+            <p>
+              Work is where intentions become scheduled commitments, assigned
+              tasks, approvals and verified outcomes.
+            </p>
+            <div className="button-row">
+              <Link className="entity-link" href="/workspace/work">
+                Open Work calendar
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/projects"
+              >
+                Open app-development projects
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/goals"
+              >
+                Goals & intentions
+              </Link>
+              {approved ? (
+                <button disabled={busy} onClick={executeAction}>
+                  Execute approved action
+                </button>
+              ) : (
+                <button className="secondary" onClick={() => setArea("Inbox")}>
+                  Review Inbox
+                </button>
+              )}
+            </div>
+            <p className="permission-note">
+              Calendar and travel are the next Work controls; they will reuse
+              the same company, project and asset records rather than create
+              another directory.
+            </p>
+          </section>
+        )}
+        {area === "Insights" && (
+          <section className="approval-card">
+            <p className="eyebrow">Verified outcome</p>
+            {activeJob ? (
+              <>
+                <h2>
+                  {activeJob.result?.verification_status === "verified"
+                    ? "Outcome verified"
+                    : "Verification required"}
+                </h2>
+                <p>
+                  {String(
+                    activeJob.result?.summary ??
+                      "Select cited knowledge, then verify the completed action.",
+                  )}
+                </p>
+                <button
+                  disabled={
+                    busy ||
+                    activeJob.result?.verification_status === "verified" ||
+                    !selected
+                  }
+                  onClick={verifyOutcome}
+                >
+                  Verify outcome with citation
+                </button>
+              </>
+            ) : (
+              <EmptyState
+                text="No executed action is awaiting verification."
+                cta="Open Work"
+                onAction={() => setArea("Work")}
+              />
+            )}
+          </section>
+        )}
+        {area === "Automations" && (
+          <section className="approval-card">
+            <p className="eyebrow">Automation control room</p>
+            <h2>Define, run and inspect governed workflows.</h2>
+            <p>
+              The full control room uses the live workflow registry and
+              idempotent run queue. Structured handover remains available after
+              a verified outcome.
+            </p>
+            <div className="button-row">
+              <Link className="entity-link" href="/workspace/automations">
+                Open automation control room
+              </Link>
+              <button
+                disabled={activeJob?.result?.verification_status !== "verified"}
+                onClick={downloadHandover}
+              >
+                Download structured handover
+              </button>
+            </div>
+          </section>
+        )}
+        {area === "Organization" && (
+          <>
+            <div className="button-row organization-actions">
+              <Link className="entity-link" href="/workspace/integrations">
+                Accounts & apps
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/assets"
+              >
+                Assets
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/goals"
+              >
+                Goals & intentions
+              </Link>
+              <Link
+                className="entity-link secondary-link"
+                href="/workspace/projects"
+              >
+                App-development projects
+              </Link>
+            </div>
+            <CompanyTileDirectory
+              companies={matchingCompanies}
+              contacts={contacts}
+              search={directorySearch}
+              setSearch={setDirectorySearch}
+            />
+          </>
+        )}
+        {area === "Relationships" && (
+          <ContactDirectory
+            contacts={matchingContacts}
+            companies={companies}
+            search={directorySearch}
+            setSearch={setDirectorySearch}
+            selected={selectedContact}
+            setSelected={setSelectedContact}
+            setSelectedCompany={setSelectedCompany}
+            setArea={setArea}
+            openKnowledge={openKnowledge}
+          />
+        )}
+      </section>
+    </main>
+  );
 }
 
-function CompanyTileDirectory({ companies, contacts, search, setSearch }: { companies: CompanyRecord[]; contacts: ContactRecord[]; search: string; setSearch: (value: string) => void }) {
-  return <section className="directory-shell"><div className="directory-toolbar"><div><p className="eyebrow">Company portfolio</p><strong>{companies.length} companies</strong></div><label><span>Find a company</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, type or jurisdiction" /></label></div>{companies.length ? <div className="company-tile-grid">{companies.map((item) => { const people = contacts.filter((contact) => contact.company_id === item.id || contact.company_name === item.name || contact.company_name === item.legal_name).length; return <Link className="company-tile" key={item.id} href={`/workspace/companies/${item.id}`}><div><p className="eyebrow">{item.company_type ?? "Company"}</p><h2>{item.name}</h2><p>{item.legal_name && item.legal_name !== item.name ? item.legal_name : item.jurisdiction ?? "Jurisdiction not recorded"}</p></div><dl><div><dt>Registration</dt><dd>{item.registration_number ?? "Not recorded"}</dd></div><div><dt>People</dt><dd>{people}</dd></div><div><dt>Status</dt><dd>{item.status}</dd></div></dl><span>Open company overview →</span></Link>; })}</div> : <EmptyState text="No company matches this search." />}</section>;
+function CompanyTileDirectory({
+  companies,
+  contacts,
+  search,
+  setSearch,
+}: {
+  companies: CompanyRecord[];
+  contacts: ContactRecord[];
+  search: string;
+  setSearch: (value: string) => void;
+}) {
+  return (
+    <section className="directory-shell">
+      <div className="directory-toolbar">
+        <div>
+          <p className="eyebrow">Company portfolio</p>
+          <strong>{companies.length} companies</strong>
+        </div>
+        <label>
+          <span>Find a company</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, type or jurisdiction"
+          />
+        </label>
+      </div>
+      {companies.length ? (
+        <div className="company-tile-grid">
+          {companies.map((item) => {
+            const people = contacts.filter(
+              (contact) =>
+                contact.company_id === item.id ||
+                contact.company_name === item.name ||
+                contact.company_name === item.legal_name,
+            ).length;
+            return (
+              <Link
+                className="company-tile"
+                key={item.id}
+                href={`/workspace/companies/${item.id}`}
+              >
+                <div>
+                  <p className="eyebrow">{item.company_type ?? "Company"}</p>
+                  <h2>{item.name}</h2>
+                  <p>
+                    {item.legal_name && item.legal_name !== item.name
+                      ? item.legal_name
+                      : (item.jurisdiction ?? "Jurisdiction not recorded")}
+                  </p>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Registration</dt>
+                    <dd>{item.registration_number ?? "Not recorded"}</dd>
+                  </div>
+                  <div>
+                    <dt>People</dt>
+                    <dd>{people}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{item.status}</dd>
+                  </div>
+                </dl>
+                <span>Open company overview →</span>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState text="No company matches this search." />
+      )}
+    </section>
+  );
 }
 
-function CompanyDirectory({ companies, company, contacts, aliases, relationships, search, setSearch, selected, setSelected, setSelectedContact, setArea, openKnowledge }: any) {
-  const companyContacts = company ? contacts.filter((item: ContactRecord) => item.company_id === company.id || (!item.company_id && item.company_name && [company.name, company.legal_name].filter(Boolean).includes(item.company_name))) : [];
-  const companyAliases = company ? aliases.filter((item: AliasRecord) => item.company_id === company.id) : [];
-  const companyRelationships = company ? relationships.filter((item: CompanyRelationship) => item.source_company_id === company.id || item.target_company_id === company.id) : [];
-  return <section className="directory-shell"><div className="directory-toolbar"><div><p className="eyebrow">Company directory</p><strong>{companies.length} companies</strong></div><label><span>Find a company</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, type or jurisdiction" /></label></div><div className="directory-grid"><div className="directory-list">{companies.map((item: CompanyRecord) => <button key={item.id} className={selected === item.id ? "selected" : ""} onClick={() => setSelected(item.id)}><span><strong>{item.name}</strong><small>{item.company_type ?? item.legal_name ?? "Company"}</small></span><em>{contacts.filter((entry: ContactRecord) => entry.company_id === item.id || entry.company_name === item.name || entry.company_name === item.legal_name).length} contacts</em></button>)}</div><article className="entity-landing">{company ? <><p className="eyebrow">Company record · {company.status}</p><h2>{company.name}</h2><p className="entity-subtitle">{company.legal_name && company.legal_name !== company.name ? company.legal_name : company.company_type ?? "Company"}</p><dl><div><dt>Jurisdiction</dt><dd>{company.jurisdiction ?? "Not recorded"}</dd></div><div><dt>Registration</dt><dd>{company.registration_number ?? "Not recorded"}</dd></div><div><dt>Website</dt><dd>{company.website ? <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer">{company.website}</a> : "Not recorded"}</dd></div><div><dt>Aliases</dt><dd>{companyAliases.map((item: AliasRecord) => item.alias).join(", ") || "None"}</dd></div></dl><div className="entity-section"><div><p className="eyebrow">People</p><strong>{companyContacts.length}</strong></div>{companyContacts.slice(0, 8).map((item: ContactRecord) => <button key={item.id} onClick={() => { setSelectedContact(item.id); setArea("Relationships"); }}><span><strong>{item.name}</strong><small>{item.role_title ?? item.email ?? "Contact"}</small></span><em>Open contact</em></button>)}</div><div className="button-row"><button onClick={() => openKnowledge("documents", company.name)}>Find related documents</button><button className="secondary" onClick={() => setArea("Relationships")}>Open contact directory</button></div>{!companyRelationships.length && <p className="directory-note">No governed company-to-company relationship is recorded yet.</p>}</> : <EmptyState text="No company matches this search." />}</article></div></section>;
+function CompanyDirectory({
+  companies,
+  company,
+  contacts,
+  aliases,
+  relationships,
+  search,
+  setSearch,
+  selected,
+  setSelected,
+  setSelectedContact,
+  setArea,
+  openKnowledge,
+}: any) {
+  const companyContacts = company
+    ? contacts.filter(
+        (item: ContactRecord) =>
+          item.company_id === company.id ||
+          (!item.company_id &&
+            item.company_name &&
+            [company.name, company.legal_name]
+              .filter(Boolean)
+              .includes(item.company_name)),
+      )
+    : [];
+  const companyAliases = company
+    ? aliases.filter((item: AliasRecord) => item.company_id === company.id)
+    : [];
+  const companyRelationships = company
+    ? relationships.filter(
+        (item: CompanyRelationship) =>
+          item.source_company_id === company.id ||
+          item.target_company_id === company.id,
+      )
+    : [];
+  return (
+    <section className="directory-shell">
+      <div className="directory-toolbar">
+        <div>
+          <p className="eyebrow">Company directory</p>
+          <strong>{companies.length} companies</strong>
+        </div>
+        <label>
+          <span>Find a company</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, type or jurisdiction"
+          />
+        </label>
+      </div>
+      <div className="directory-grid">
+        <div className="directory-list">
+          {companies.map((item: CompanyRecord) => (
+            <button
+              key={item.id}
+              className={selected === item.id ? "selected" : ""}
+              onClick={() => setSelected(item.id)}
+            >
+              <span>
+                <strong>{item.name}</strong>
+                <small>
+                  {item.company_type ?? item.legal_name ?? "Company"}
+                </small>
+              </span>
+              <em>
+                {
+                  contacts.filter(
+                    (entry: ContactRecord) =>
+                      entry.company_id === item.id ||
+                      entry.company_name === item.name ||
+                      entry.company_name === item.legal_name,
+                  ).length
+                }{" "}
+                contacts
+              </em>
+            </button>
+          ))}
+        </div>
+        <article className="entity-landing">
+          {company ? (
+            <>
+              <p className="eyebrow">Company record · {company.status}</p>
+              <h2>{company.name}</h2>
+              <p className="entity-subtitle">
+                {company.legal_name && company.legal_name !== company.name
+                  ? company.legal_name
+                  : (company.company_type ?? "Company")}
+              </p>
+              <dl>
+                <div>
+                  <dt>Jurisdiction</dt>
+                  <dd>{company.jurisdiction ?? "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt>Registration</dt>
+                  <dd>{company.registration_number ?? "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt>Website</dt>
+                  <dd>
+                    {company.website ? (
+                      <a
+                        href={
+                          company.website.startsWith("http")
+                            ? company.website
+                            : `https://${company.website}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {company.website}
+                      </a>
+                    ) : (
+                      "Not recorded"
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Aliases</dt>
+                  <dd>
+                    {companyAliases
+                      .map((item: AliasRecord) => item.alias)
+                      .join(", ") || "None"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="entity-section">
+                <div>
+                  <p className="eyebrow">People</p>
+                  <strong>{companyContacts.length}</strong>
+                </div>
+                {companyContacts.slice(0, 8).map((item: ContactRecord) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedContact(item.id);
+                      setArea("Relationships");
+                    }}
+                  >
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>
+                        {item.role_title ?? item.email ?? "Contact"}
+                      </small>
+                    </span>
+                    <em>Open contact</em>
+                  </button>
+                ))}
+              </div>
+              <div className="button-row">
+                <button
+                  onClick={() => openKnowledge("documents", company.name)}
+                >
+                  Find related documents
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => setArea("Relationships")}
+                >
+                  Open contact directory
+                </button>
+              </div>
+              {!companyRelationships.length && (
+                <p className="directory-note">
+                  No governed company-to-company relationship is recorded yet.
+                </p>
+              )}
+            </>
+          ) : (
+            <EmptyState text="No company matches this search." />
+          )}
+        </article>
+      </div>
+    </section>
+  );
 }
 
-type ContactGroup = "all" | "main" | "company" | "email" | "phone" | "identify" | "assign" | "advisers" | "duplicates";
+type ContactGroup =
+  | "all"
+  | "main"
+  | "company"
+  | "email"
+  | "phone"
+  | "identify"
+  | "assign"
+  | "advisers"
+  | "duplicates";
 
 function contactDisplayName(contact: ContactRecord) {
   const recorded = contact.name?.trim();
   if (recorded && recorded.toLowerCase() !== "(unnamed)") return recorded;
-  return contact.company_name || contact.email || contact.phone || "Unidentified contact";
+  return (
+    contact.company_name ||
+    contact.email ||
+    contact.phone ||
+    "Unidentified contact"
+  );
 }
 
-function ContactDirectory({ contacts, companies, search, setSearch, selected, setSelected, setSelectedCompany, setArea, openKnowledge }: any) {
+function ContactDirectory({
+  contacts,
+  companies,
+  search,
+  setSearch,
+  selected,
+  setSelected,
+  setSelectedCompany,
+  setArea,
+  openKnowledge,
+}: any) {
   const [group, setGroup] = useState<ContactGroup>("all");
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
-  const duplicateKeys = (item: ContactRecord) => [item.email?.trim().toLowerCase(), item.phone?.replace(/\D/g,""), item.name?.trim().toLowerCase() !== "(unnamed)" ? `${item.name?.trim().toLowerCase()}|${item.company_name?.trim().toLowerCase() ?? ""}` : null].filter(Boolean) as string[];
-  const duplicateCounts = new Map<string,number>(); contacts.forEach((item:ContactRecord)=>duplicateKeys(item).forEach(key=>duplicateCounts.set(key,(duplicateCounts.get(key)??0)+1)));
-  const definitions: Array<{ id: ContactGroup; label: string; test: (item: ContactRecord) => boolean }> = [
+  const duplicateKeys = (item: ContactRecord) =>
+    [
+      item.email?.trim().toLowerCase(),
+      item.phone?.replace(/\D/g, ""),
+      item.name?.trim().toLowerCase() !== "(unnamed)"
+        ? `${item.name?.trim().toLowerCase()}|${item.company_name?.trim().toLowerCase() ?? ""}`
+        : null,
+    ].filter(Boolean) as string[];
+  const duplicateCounts = new Map<string, number>();
+  contacts.forEach((item: ContactRecord) =>
+    duplicateKeys(item).forEach((key) =>
+      duplicateCounts.set(key, (duplicateCounts.get(key) ?? 0) + 1),
+    ),
+  );
+  const definitions: Array<{
+    id: ContactGroup;
+    label: string;
+    test: (item: ContactRecord) => boolean;
+  }> = [
     { id: "all", label: "All contacts", test: () => true },
-    { id: "main", label: "Main contacts", test: (item) => Boolean(item.metadata?.main_contact) || /owner|director|manager|head|chief/i.test(item.role_title ?? "") },
-    { id: "company", label: "Company-associated", test: (item) => Boolean(item.company_id || item.company_name) },
+    {
+      id: "main",
+      label: "Main contacts",
+      test: (item) =>
+        Boolean(item.metadata?.main_contact) ||
+        /owner|director|manager|head|chief/i.test(item.role_title ?? ""),
+    },
+    {
+      id: "company",
+      label: "Company-associated",
+      test: (item) => Boolean(item.company_id || item.company_name),
+    },
     { id: "email", label: "Email-ready", test: (item) => Boolean(item.email) },
-    { id: "phone", label: "Phone & WhatsApp", test: (item) => Boolean(item.phone || item.metadata?.whatsapp) },
-    { id: "identify", label: "Needs identification", test: (item) => !item.name?.trim() || item.name.toLowerCase() === "(unnamed)" },
-    { id: "assign", label: "Needs company assignment", test: (item) => !item.company_id },
-    { id: "advisers", label: "Advisers & team", test: (item) => item.contact_type !== "external" || /adviser|advisor|consultant|lawyer|accountant|tax|employee/i.test(`${item.role_title ?? ""} ${item.contact_type}`) },
-    { id: "duplicates", label: "Possible duplicates", test: (item) => duplicateKeys(item).some(key => (duplicateCounts.get(key) ?? 0) > 1) },
+    {
+      id: "phone",
+      label: "Phone & WhatsApp",
+      test: (item) => Boolean(item.phone || item.metadata?.whatsapp),
+    },
+    {
+      id: "identify",
+      label: "Needs identification",
+      test: (item) =>
+        !item.name?.trim() || item.name.toLowerCase() === "(unnamed)",
+    },
+    {
+      id: "assign",
+      label: "Needs company assignment",
+      test: (item) => !item.company_id,
+    },
+    {
+      id: "advisers",
+      label: "Advisers & team",
+      test: (item) =>
+        item.contact_type !== "external" ||
+        /adviser|advisor|consultant|lawyer|accountant|tax|employee/i.test(
+          `${item.role_title ?? ""} ${item.contact_type}`,
+        ),
+    },
+    {
+      id: "duplicates",
+      label: "Possible duplicates",
+      test: (item) =>
+        duplicateKeys(item).some((key) => (duplicateCounts.get(key) ?? 0) > 1),
+    },
   ];
-  const activeDefinition = definitions.find((item) => item.id === group) ?? definitions[0];
+  const activeDefinition =
+    definitions.find((item) => item.id === group) ?? definitions[0];
   const groupedContacts = contacts.filter(activeDefinition.test);
-  const contact = groupedContacts.find((item: ContactRecord) => item.id === selected) ?? groupedContacts[0];
-  const contactCompany = contact ? companies.find((item: CompanyRecord) => item.id === contact.company_id || item.name === contact.company_name || item.legal_name === contact.company_name) : null;
+  const contact =
+    groupedContacts.find((item: ContactRecord) => item.id === selected) ??
+    groupedContacts[0];
+  const contactCompany = contact
+    ? companies.find(
+        (item: CompanyRecord) =>
+          item.id === contact.company_id ||
+          item.name === contact.company_name ||
+          item.legal_name === contact.company_name,
+      )
+    : null;
   const meta = contact?.metadata ?? {};
-  const whatsapp = String(meta.whatsapp ?? contact?.phone ?? "").replace(/\D/g, "");
-  const quality = contact ? [
-    (!contact.name?.trim() || contact.name.toLowerCase() === "(unnamed)") && "Name missing",
-    !contact.email && "Email missing",
-    !contact.phone && "Phone missing",
-    !contact.company_id && "Company link missing",
-  ].filter(Boolean) as string[] : [];
+  const whatsapp = String(meta.whatsapp ?? contact?.phone ?? "").replace(
+    /\D/g,
+    "",
+  );
+  const quality = contact
+    ? ([
+        (!contact.name?.trim() || contact.name.toLowerCase() === "(unnamed)") &&
+          "Name missing",
+        !contact.email && "Email missing",
+        !contact.phone && "Phone missing",
+        !contact.company_id && "Company link missing",
+      ].filter(Boolean) as string[])
+    : [];
   const copyDetails = async () => {
     if (!contact) return;
-    await navigator.clipboard.writeText([contactDisplayName(contact), contact.email, contact.phone, contactCompany?.name ?? contact.company_name].filter(Boolean).join("\n"));
+    await navigator.clipboard.writeText(
+      [
+        contactDisplayName(contact),
+        contact.email,
+        contact.phone,
+        contactCompany?.name ?? contact.company_name,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
   };
-  const recipientEmails = contacts.filter((item:ContactRecord)=>selectedRecipients.includes(item.id)).map((item:ContactRecord)=>item.email).filter(Boolean) as string[];
-  const mailingHref = recipientEmails.length ? `mailto:?bcc=${encodeURIComponent(recipientEmails.join(","))}` : "";
+  const recipientEmails = contacts
+    .filter((item: ContactRecord) => selectedRecipients.includes(item.id))
+    .map((item: ContactRecord) => item.email)
+    .filter(Boolean) as string[];
+  const mailingHref = recipientEmails.length
+    ? `mailto:?bcc=${encodeURIComponent(recipientEmails.join(","))}`
+    : "";
 
-  return <section className="directory-shell contact-desk">
-    <div className="directory-toolbar"><div><p className="eyebrow">Relationship desk</p><strong>{contacts.length} contacts in view</strong><small>Communicate, resolve missing data, and open governed company context.</small></div><label><span>Find a contact</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, email, role or company" /></label></div>
-    <nav className="contact-groups" aria-label="Contact groups">{definitions.map((item) => { const count = contacts.filter(item.test).length; return <button key={item.id} className={group === item.id ? "active" : ""} onClick={() => setGroup(item.id)}><span>{item.label}</span><strong>{count}</strong></button>; })}</nav>
-    <div className="mailing-bar"><div><strong>{selectedRecipients.length} selected</strong><span>{recipientEmails.length} email-ready</span></div><button onClick={()=>setSelectedRecipients(groupedContacts.filter((item:ContactRecord)=>item.email).map((item:ContactRecord)=>item.id))}>Select email-ready in view</button><button className="secondary" onClick={()=>setSelectedRecipients([])}>Clear</button>{mailingHref&&<a href={mailingHref}>Compose BCC email</a>}</div>
-    <div className="directory-grid"><div className="directory-list" aria-label={activeDefinition.label}>{groupedContacts.length ? groupedContacts.map((item: ContactRecord) => <div className={`contact-list-row ${contact?.id === item.id ? "selected" : ""}`} key={item.id}><label title={item.email?"Select for mailing":"No email recorded"}><input type="checkbox" disabled={!item.email} checked={selectedRecipients.includes(item.id)} onChange={(event)=>setSelectedRecipients(ids=>event.target.checked?[...ids,item.id]:ids.filter(id=>id!==item.id))}/></label><button onClick={() => setSelected(item.id)}><span><strong>{contactDisplayName(item)}</strong><small>{item.role_title ?? item.company_name ?? item.email ?? "Details need review"}</small></span><em>{item.email ? "email" : item.phone ? "phone" : "incomplete"}</em></button></div>) : <EmptyState text="No contact matches this group and search." />}</div>
-      <article className="entity-landing contact-profile">{contact ? <><div className="contact-profile-head"><div><p className="eyebrow">Contact record · {contact.status}</p><h2>{contactDisplayName(contact)}</h2><p className="entity-subtitle">{contact.role_title ?? contact.contact_type}</p></div><Link className="profile-link" href={`/workspace/contacts/${contact.id}`}>Open full profile →</Link></div>
-        <div className="contact-actions">{contact.email && <a href={`mailto:${contact.email}`}>Send email</a>}{contact.phone && <a href={`tel:${contact.phone}`}>Call</a>}{whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">WhatsApp</a>}<button className="secondary" onClick={copyDetails}>Copy details</button></div>
-        <section className="contact-quality"><div><p className="eyebrow">Data quality</p><strong>{quality.length ? `${quality.length} items need attention` : "Record ready"}</strong></div><div>{quality.length ? quality.map((item) => <span key={item}>{item}</span>) : <span className="ready">Core details complete</span>}</div></section>
-        <dl><div><dt>Email</dt><dd>{contact.email ?? "Not recorded"}</dd></div><div><dt>Phone</dt><dd>{contact.phone ?? "Not recorded"}</dd></div><div><dt>Company</dt><dd>{contactCompany?.name ?? contact.company_name ?? "Not linked"}</dd></div><div><dt>Source</dt><dd>{contact.source_code ?? String(meta.source_id ?? "Not recorded")}</dd></div><div><dt>Tags</dt><dd>{String(meta.tags ?? "None")}</dd></div><div><dt>Address</dt><dd>{String(meta.postal_address ?? meta.city_country ?? "Not recorded")}</dd></div></dl>
-        <div className="button-row">{contactCompany && <button onClick={() => { setSelectedCompany(contactCompany.id); setArea("Organization"); }}>Open company overview</button>}<button className="secondary" onClick={() => openKnowledge("documents", contactDisplayName(contact))}>Find related documents</button></div>
-      </> : <EmptyState text="No contact matches this group and search." />}</article></div>
-  </section>;
+  return (
+    <section className="directory-shell contact-desk">
+      <div className="directory-toolbar">
+        <div>
+          <p className="eyebrow">Relationship desk</p>
+          <strong>{contacts.length} contacts in view</strong>
+          <small>
+            Communicate, resolve missing data, and open governed company
+            context.
+          </small>
+        </div>
+        <label>
+          <span>Find a contact</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, email, role or company"
+          />
+        </label>
+      </div>
+      <nav className="contact-groups" aria-label="Contact groups">
+        {definitions.map((item) => {
+          const count = contacts.filter(item.test).length;
+          return (
+            <button
+              key={item.id}
+              className={group === item.id ? "active" : ""}
+              onClick={() => setGroup(item.id)}
+            >
+              <span>{item.label}</span>
+              <strong>{count}</strong>
+            </button>
+          );
+        })}
+      </nav>
+      <div className="mailing-bar">
+        <div>
+          <strong>{selectedRecipients.length} selected</strong>
+          <span>{recipientEmails.length} email-ready</span>
+        </div>
+        <button
+          onClick={() =>
+            setSelectedRecipients(
+              groupedContacts
+                .filter((item: ContactRecord) => item.email)
+                .map((item: ContactRecord) => item.id),
+            )
+          }
+        >
+          Select email-ready in view
+        </button>
+        <button className="secondary" onClick={() => setSelectedRecipients([])}>
+          Clear
+        </button>
+        {mailingHref && <a href={mailingHref}>Compose BCC email</a>}
+      </div>
+      <div className="directory-grid">
+        <div className="directory-list" aria-label={activeDefinition.label}>
+          {groupedContacts.length ? (
+            groupedContacts.map((item: ContactRecord) => (
+              <div
+                className={`contact-list-row ${contact?.id === item.id ? "selected" : ""}`}
+                key={item.id}
+              >
+                <label
+                  title={
+                    item.email ? "Select for mailing" : "No email recorded"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    disabled={!item.email}
+                    checked={selectedRecipients.includes(item.id)}
+                    onChange={(event) =>
+                      setSelectedRecipients((ids) =>
+                        event.target.checked
+                          ? [...ids, item.id]
+                          : ids.filter((id) => id !== item.id),
+                      )
+                    }
+                  />
+                </label>
+                <button onClick={() => setSelected(item.id)}>
+                  <span>
+                    <strong>{contactDisplayName(item)}</strong>
+                    <small>
+                      {item.role_title ??
+                        item.company_name ??
+                        item.email ??
+                        "Details need review"}
+                    </small>
+                  </span>
+                  <em>
+                    {item.email ? "email" : item.phone ? "phone" : "incomplete"}
+                  </em>
+                </button>
+              </div>
+            ))
+          ) : (
+            <EmptyState text="No contact matches this group and search." />
+          )}
+        </div>
+        <article className="entity-landing contact-profile">
+          {contact ? (
+            <>
+              <div className="contact-profile-head">
+                <div>
+                  <p className="eyebrow">Contact record · {contact.status}</p>
+                  <h2>{contactDisplayName(contact)}</h2>
+                  <p className="entity-subtitle">
+                    {contact.role_title ?? contact.contact_type}
+                  </p>
+                </div>
+                <Link
+                  className="profile-link"
+                  href={`/workspace/contacts/${contact.id}`}
+                >
+                  Open full profile →
+                </Link>
+              </div>
+              <div className="contact-actions">
+                {contact.email && (
+                  <a href={`mailto:${contact.email}`}>Send email</a>
+                )}
+                {contact.phone && <a href={`tel:${contact.phone}`}>Call</a>}
+                {whatsapp && (
+                  <a
+                    href={`https://wa.me/${whatsapp}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+                <button className="secondary" onClick={copyDetails}>
+                  Copy details
+                </button>
+              </div>
+              <section className="contact-quality">
+                <div>
+                  <p className="eyebrow">Data quality</p>
+                  <strong>
+                    {quality.length
+                      ? `${quality.length} items need attention`
+                      : "Record ready"}
+                  </strong>
+                </div>
+                <div>
+                  {quality.length ? (
+                    quality.map((item) => <span key={item}>{item}</span>)
+                  ) : (
+                    <span className="ready">Core details complete</span>
+                  )}
+                </div>
+              </section>
+              <dl>
+                <div>
+                  <dt>Email</dt>
+                  <dd>{contact.email ?? "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt>Phone</dt>
+                  <dd>{contact.phone ?? "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt>Company</dt>
+                  <dd>
+                    {contactCompany?.name ??
+                      contact.company_name ??
+                      "Not linked"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>
+                    {contact.source_code ??
+                      String(meta.source_id ?? "Not recorded")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Tags</dt>
+                  <dd>{String(meta.tags ?? "None")}</dd>
+                </div>
+                <div>
+                  <dt>Address</dt>
+                  <dd>
+                    {String(
+                      meta.postal_address ??
+                        meta.city_country ??
+                        "Not recorded",
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <div className="button-row">
+                {contactCompany && (
+                  <button
+                    onClick={() => {
+                      setSelectedCompany(contactCompany.id);
+                      setArea("Organization");
+                    }}
+                  >
+                    Open company overview
+                  </button>
+                )}
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    openKnowledge("documents", contactDisplayName(contact))
+                  }
+                >
+                  Find related documents
+                </button>
+              </div>
+            </>
+          ) : (
+            <EmptyState text="No contact matches this group and search." />
+          )}
+        </article>
+      </div>
+    </section>
+  );
 }
 
-function KnowledgeHub(props: any) { const { view, setView, search, setSearch, evidence, selected, selectedEvidence, setSelectedEvidence, sources, documents, currentDocument, selectedDocument, setSelectedDocument, sessions, handovers, busy, question, setQuestion, decision, setDecision, action, setAction, recordDecision, setArea, downloadJson } = props; return <section className="knowledge-hub"><div className="knowledge-tools"><div className="knowledge-tabs" role="tablist">{(["knowledge", "documents", "memory", "sessions"] as KnowledgeView[]).map((item) => <button role="tab" aria-selected={view === item} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>{item}</button>)}</div><label className="knowledge-search"><span>Search this workspace</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search titles, evidence and sessions" /></label></div>
-  {view === "knowledge" && <section className="workspace-two-pane"><div className="evidence-list"><p className="eyebrow">Verified knowledge</p>{evidence.length ? evidence.map((item: Evidence) => <button key={item.id} className={selectedEvidence === item.id ? "selected" : ""} onClick={() => setSelectedEvidence(item.id)}><strong>{item.title}</strong><span>{item.verification_status}</span></button>) : <EmptyState text="No knowledge matches this search." />}</div><form className="decision-panel" onSubmit={recordDecision}><p className="eyebrow">Cited knowledge</p><h2>{selected?.title ?? "Select knowledge"}</h2><blockquote>{selected?.body ?? "Choose a verified item to begin."}</blockquote><div className="source-strip"><strong>{sources.length}</strong><span>linked sources</span><button type="button" onClick={() => setArea("Relationships")}>View provenance</button></div><label>Question<textarea value={question} onChange={(event) => setQuestion(event.target.value)} /></label><label>Recorded decision<textarea value={decision} onChange={(event) => setDecision(event.target.value)} /></label><label>Action requiring approval<input value={action} onChange={(event) => setAction(event.target.value)} /></label><button disabled={busy || !selected}>Record decision and request approval</button></form></section>}
-  {view === "documents" && <section className="workspace-two-pane"><div className="record-list"><p className="eyebrow">Document registry</p>{documents.length ? documents.map((item: DocumentRecord) => <button key={item.id} className={selectedDocument === item.id ? "selected" : ""} onClick={() => setSelectedDocument(item.id)}><span><strong>{item.title}</strong><small>{item.document_type ?? "Uncategorized"}</small></span><em>{item.status}</em></button>) : <EmptyState text="No documents match this search." />}</div><article className="record-detail"><p className="eyebrow">Document details</p><h2>{currentDocument?.title ?? "Select a document"}</h2>{currentDocument && <><dl><div><dt>Category</dt><dd>{currentDocument.document_type ?? "Uncategorized"}</dd></div><div><dt>Status</dt><dd>{currentDocument.status}</dd></div><div><dt>Updated</dt><dd>{new Date(currentDocument.updated_at).toLocaleDateString()}</dd></div></dl><button onClick={() => setArea("Relationships")}>View document relationships</button></>}</article></section>}
-  {view === "memory" && <section className="memory-grid">{["Working", "Session", "Candidate", "Verified", "Policy"].map((tier, index) => <article key={tier}><span>0{index + 1}</span><h3>{tier}</h3><p>{tier === "Session" ? `${sessions.length} governed sessions` : tier === "Verified" ? `${evidence.length} reviewed items` : "Governed memory state"}</p><button onClick={() => setView(tier === "Session" ? "sessions" : "knowledge")}>Open {tier.toLowerCase()}</button></article>)}</section>}
-  {view === "sessions" && <section className="session-stream">{sessions.length ? sessions.map((item: SessionRecord) => { const latest = handovers.find((handover: HandoverRecord) => handover.session_id === item.id); return <article key={item.id}><div><p className="eyebrow">{item.status} · {item.current_phase ?? "No active phase"}</p><h3>{item.resume_key}</h3><p>{item.objective}</p></div><aside><strong>{handovers.filter((handover: HandoverRecord) => handover.session_id === item.id).length}</strong><span>handovers</span><button disabled={!latest} onClick={() => latest && downloadJson(`pbs-central-handover-${item.resume_key}.json`, latest)}>Download latest</button></aside></article>; }) : <EmptyState text="No sessions match this search." />}</section>}</section>; }
-function EmptyState({ text, cta, onAction }: { text: string; cta?: string; onAction?: () => void }) { return <div className="empty-state"><p>{text}</p>{cta && onAction && <button onClick={onAction}>{cta}</button>}</div>; }
-function FlowLedger({ approvals, jobs }: { approvals: Approval[]; jobs: Job[] }) { const outcome = jobs[0]?.result?.verification_status; return <ol className="flow-ledger"><li className="done">Briefing <span>ready</span></li><li className="done">Evidence <span>cited</span></li><li className={approvals.length ? "done" : ""}>Decision <span>{approvals.length ? "recorded" : "waiting"}</span></li><li className={approvals.some((item) => item.status === "approved") ? "done" : ""}>Approval <span>{approvals[0]?.status ?? "waiting"}</span></li><li className={outcome === "verified" ? "done" : ""}>Outcome <span>{String(outcome ?? "waiting")}</span></li></ol>; }
+function KnowledgeHub(props: any) {
+  const {
+    view,
+    setView,
+    search,
+    setSearch,
+    evidence,
+    selected,
+    selectedEvidence,
+    setSelectedEvidence,
+    sources,
+    documents,
+    currentDocument,
+    selectedDocument,
+    setSelectedDocument,
+    sessions,
+    handovers,
+    busy,
+    question,
+    setQuestion,
+    decision,
+    setDecision,
+    action,
+    setAction,
+    recordDecision,
+    setArea,
+    downloadJson,
+  } = props;
+  return (
+    <section className="knowledge-hub">
+      <div className="knowledge-tools">
+        <div className="knowledge-tabs" role="tablist">
+          {(
+            ["knowledge", "documents", "memory", "sessions"] as KnowledgeView[]
+          ).map((item) => (
+            <button
+              role="tab"
+              aria-selected={view === item}
+              className={view === item ? "active" : ""}
+              key={item}
+              onClick={() => setView(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+        <label className="knowledge-search">
+          <span>Search this workspace</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search titles, evidence and sessions"
+          />
+        </label>
+      </div>
+      {view === "knowledge" && (
+        <section className="workspace-two-pane">
+          <div className="evidence-list">
+            <p className="eyebrow">Verified knowledge</p>
+            {evidence.length ? (
+              evidence.map((item: Evidence) => (
+                <button
+                  key={item.id}
+                  className={selectedEvidence === item.id ? "selected" : ""}
+                  onClick={() => setSelectedEvidence(item.id)}
+                >
+                  <strong>{item.title}</strong>
+                  <span>{item.verification_status}</span>
+                </button>
+              ))
+            ) : (
+              <EmptyState text="No knowledge matches this search." />
+            )}
+          </div>
+          <form className="decision-panel" onSubmit={recordDecision}>
+            <p className="eyebrow">Cited knowledge</p>
+            <h2>{selected?.title ?? "Select knowledge"}</h2>
+            <blockquote>
+              {selected?.body ?? "Choose a verified item to begin."}
+            </blockquote>
+            <div className="source-strip">
+              <strong>{sources.length}</strong>
+              <span>linked sources</span>
+              <button type="button" onClick={() => setArea("Relationships")}>
+                View provenance
+              </button>
+            </div>
+            <label>
+              Question
+              <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+              />
+            </label>
+            <label>
+              Recorded decision
+              <textarea
+                value={decision}
+                onChange={(event) => setDecision(event.target.value)}
+              />
+            </label>
+            <label>
+              Action requiring approval
+              <input
+                value={action}
+                onChange={(event) => setAction(event.target.value)}
+              />
+            </label>
+            <button disabled={busy || !selected}>
+              Record decision and request approval
+            </button>
+          </form>
+        </section>
+      )}
+      {view === "documents" && (
+        <section className="workspace-two-pane">
+          <div className="record-list">
+            <p className="eyebrow">Document registry</p>
+            {documents.length ? (
+              documents.map((item: DocumentRecord) => (
+                <button
+                  key={item.id}
+                  className={selectedDocument === item.id ? "selected" : ""}
+                  onClick={() => setSelectedDocument(item.id)}
+                >
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.document_type ?? "Uncategorized"}</small>
+                  </span>
+                  <em>{item.status}</em>
+                </button>
+              ))
+            ) : (
+              <EmptyState text="No documents match this search." />
+            )}
+          </div>
+          <article className="record-detail">
+            <p className="eyebrow">Document details</p>
+            <h2>{currentDocument?.title ?? "Select a document"}</h2>
+            {currentDocument && (
+              <>
+                <dl>
+                  <div>
+                    <dt>Category</dt>
+                    <dd>{currentDocument.document_type ?? "Uncategorized"}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{currentDocument.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Updated</dt>
+                    <dd>
+                      {new Date(
+                        currentDocument.updated_at,
+                      ).toLocaleDateString()}
+                    </dd>
+                  </div>
+                </dl>
+                <DocumentActions kind="registry" id={currentDocument.id} />
+                <button onClick={() => setArea("Relationships")}>
+                  View document relationships
+                </button>
+              </>
+            )}
+          </article>
+        </section>
+      )}
+      {view === "memory" && (
+        <section className="memory-grid">
+          {["Working", "Session", "Candidate", "Verified", "Policy"].map(
+            (tier, index) => (
+              <article key={tier}>
+                <span>0{index + 1}</span>
+                <h3>{tier}</h3>
+                <p>
+                  {tier === "Session"
+                    ? `${sessions.length} governed sessions`
+                    : tier === "Verified"
+                      ? `${evidence.length} reviewed items`
+                      : "Governed memory state"}
+                </p>
+                <button
+                  onClick={() =>
+                    setView(tier === "Session" ? "sessions" : "knowledge")
+                  }
+                >
+                  Open {tier.toLowerCase()}
+                </button>
+              </article>
+            ),
+          )}
+        </section>
+      )}
+      {view === "sessions" && (
+        <section className="session-stream">
+          {sessions.length ? (
+            sessions.map((item: SessionRecord) => {
+              const latest = handovers.find(
+                (handover: HandoverRecord) => handover.session_id === item.id,
+              );
+              return (
+                <article key={item.id}>
+                  <div>
+                    <p className="eyebrow">
+                      {item.status} · {item.current_phase ?? "No active phase"}
+                    </p>
+                    <h3>{item.resume_key}</h3>
+                    <p>{item.objective}</p>
+                  </div>
+                  <aside>
+                    <strong>
+                      {
+                        handovers.filter(
+                          (handover: HandoverRecord) =>
+                            handover.session_id === item.id,
+                        ).length
+                      }
+                    </strong>
+                    <span>handovers</span>
+                    <button
+                      disabled={!latest}
+                      onClick={() =>
+                        latest &&
+                        downloadJson(
+                          `pbs-central-handover-${item.resume_key}.json`,
+                          latest,
+                        )
+                      }
+                    >
+                      Download latest
+                    </button>
+                  </aside>
+                </article>
+              );
+            })
+          ) : (
+            <EmptyState text="No sessions match this search." />
+          )}
+        </section>
+      )}
+    </section>
+  );
+}
+function EmptyState({
+  text,
+  cta,
+  onAction,
+}: {
+  text: string;
+  cta?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="empty-state">
+      <p>{text}</p>
+      {cta && onAction && <button onClick={onAction}>{cta}</button>}
+    </div>
+  );
+}
+function FlowLedger({
+  approvals,
+  jobs,
+}: {
+  approvals: Approval[];
+  jobs: Job[];
+}) {
+  const outcome = jobs[0]?.result?.verification_status;
+  return (
+    <ol className="flow-ledger">
+      <li className="done">
+        Briefing <span>ready</span>
+      </li>
+      <li className="done">
+        Evidence <span>cited</span>
+      </li>
+      <li className={approvals.length ? "done" : ""}>
+        Decision <span>{approvals.length ? "recorded" : "waiting"}</span>
+      </li>
+      <li
+        className={
+          approvals.some((item) => item.status === "approved") ? "done" : ""
+        }
+      >
+        Approval <span>{approvals[0]?.status ?? "waiting"}</span>
+      </li>
+      <li className={outcome === "verified" ? "done" : ""}>
+        Outcome <span>{String(outcome ?? "waiting")}</span>
+      </li>
+    </ol>
+  );
+}
