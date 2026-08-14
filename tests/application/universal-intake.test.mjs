@@ -5,6 +5,8 @@ import test from "node:test";
 const canonical=await readFile(new URL("../../supabase/migrations/20260814000423_universal_intake_canonical_representation.sql",import.meta.url),"utf8");
 const upload=await readFile(new URL("../../supabase/migrations/20260813152000_document_upload_registration.sql",import.meta.url),"utf8");
 const router=await readFile(new URL("../../supabase/migrations/20260814000800_universal_intake_router.sql",import.meta.url),"utf8");
+const review=await readFile(new URL("../../supabase/migrations/20260814002111_intake_confidence_review.sql",import.meta.url),"utf8");const documents=await readFile(new URL("../../app/workspace/documents/page.tsx",import.meta.url),"utf8");const actions=await readFile(new URL("../../app/workspace/documents/actions.ts",import.meta.url),"utf8");
+const reviewPrivileges=await readFile(new URL("../../supabase/migrations/20260814002446_intake_confidence_review_privileges.sql",import.meta.url),"utf8");
 
 test("universal intake preserves immutable originals and versions canonical derivatives",()=>{
   assert.match(upload,/knowledge-originals/);
@@ -28,6 +30,9 @@ test("router creates tenant-scoped idempotent audited jobs",()=>{
   assert.match(router,/document_intake_routed/);
   assert.match(router,/from public,anon/);
 });
+
+test("field confidence enforces mandatory high-risk review and tenant-bound provenance",()=>{assert.match(review,/when 'standard' then \.80 when 'identity' then \.92 else 1\.00/);for(const risk of ["legal","financial","identity","restricted"])assert.match(review,new RegExp(risk));assert.match(review,/foreign key\(workspace_id,document_version_id\)/);assert.match(review,/foreign key\(workspace_id,representation_id\)/)});
+test("owner-admin review supports audited approve correct and reject decisions",()=>{for(const label of ["Human review queue","Approve","Correct","Reject","Save audited review"])assert.match(documents,new RegExp(label));assert.match(actions,/kos_resolve_extraction_review/);assert.match(review,/owner or admin required/);assert.match(review,/review reason required/);assert.match(review,/extraction_review_resolved/);assert.match(review,/from public,anon/);assert.match(reviewPrivileges,/alter function public\.kos_record_extraction_review[^;]+ security definer/);assert.match(reviewPrivileges,/alter function public\.kos_resolve_extraction_review[^;]+ security definer/);assert.match(reviewPrivileges,/revoke all on public\.kos_extraction_reviews from public,anon,authenticated/);assert.doesNotMatch(reviewPrivileges,/grant (insert|update)/)});
 
 test("canonical representations cover document, spreadsheet, media, email and archive structures",()=>{
   for(const kind of ["markdown","structured_json","table","transcript","keyframes","archive_manifest","email_structure"])assert.match(canonical,new RegExp(kind));
